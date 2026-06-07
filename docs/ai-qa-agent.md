@@ -48,6 +48,14 @@ Both files are ignored by git.
 - Tasks and decisions.
 - UI smoke audit through `scripts/ui-smoke-audit.js`.
 - Navigation/view wiring, critical interaction selectors, and responsive CSS guardrails.
+- Real browser journeys through Playwright:
+  - note creation;
+  - AI Review acceptance;
+  - action status changes;
+  - manual people/deadline editing;
+  - calendar visibility;
+  - privacy hiding;
+  - mobile overflow checks.
 - AI review through OpenRouter when `OPENROUTER_API_KEY` is available.
 
 ## How To Improve It

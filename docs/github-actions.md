@@ -22,7 +22,8 @@ This covers:
 
 - syntax checks;
 - UI smoke audit;
-- parser tests.
+- parser tests;
+- Playwright browser journeys.
 
 ## AI QA
 
@@ -48,6 +49,8 @@ Then uploads:
 
 - `qa-report.md`;
 - `qa-report.json`.
+- `browser-report.json`;
+- Playwright `test-results` when present.
 
 ## Required Secret
 

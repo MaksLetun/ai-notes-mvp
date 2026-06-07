@@ -4,9 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node --check scripts/ai-qa-agent.js && node --check scripts/ui-smoke-audit.js && node scripts/ui-smoke-audit.js && node --test",
+    "check": "node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node --check scripts/ai-qa-agent.js && node --check scripts/ui-smoke-audit.js && node scripts/ui-smoke-audit.js && node --test && npm run test:browser",
+    "test:browser": "playwright test",
     "qa:ai": "node scripts/ai-qa-agent.js",
     "start": "python3 -m http.server 4173",
     "dev": "python3 -m http.server 4173"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
   }
 }

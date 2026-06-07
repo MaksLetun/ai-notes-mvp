@@ -10,8 +10,9 @@ const env = loadEnv();
 
 const localReport = runLocalQa();
 const uiReport = runUiSmokeAudit();
+const browserReport = runBrowserJourneyAudit();
 const aiReport = env.OPENROUTER_API_KEY
-  ? await runOpenRouterQa(localReport, uiReport)
+  ? await runOpenRouterQa(localReport, uiReport, browserReport)
   : {
       status: "skipped",
       reason: "OPENROUTER_API_KEY is not set. Local QA completed without AI review.",
@@ -21,6 +22,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   local: localReport,
   ui: uiReport,
+  browser: browserReport,
   ai: aiReport,
 };
 
@@ -30,9 +32,10 @@ writeFileSync("qa-report.md", renderMarkdownReport(report));
 console.log(`QA report saved: ${resolve("qa-report.md")}`);
 console.log(`Local checks: ${localReport.summary.passed}/${localReport.summary.total} passed`);
 console.log(`UI smoke audit: ${uiReport.status}`);
+console.log(`Browser journey audit: ${browserReport.status}`);
 console.log(`AI review: ${aiReport.status}`);
 
-if (localReport.summary.failed > 0 || uiReport.status === "failed" || aiReport.status === "failed") {
+if (localReport.summary.failed > 0 || uiReport.status === "failed" || browserReport.status === "failed" || aiReport.status === "failed") {
   process.exitCode = 1;
 }
 
@@ -88,6 +91,17 @@ function runUiSmokeAudit() {
   };
 }
 
+function runBrowserJourneyAudit() {
+  const result = spawnSync("node", ["scripts/browser-journey-audit.js"], {
+    encoding: "utf8",
+  });
+  return {
+    status: result.status === 0 ? "passed" : "failed",
+    stdout: trimForReport(result.stdout),
+    stderr: trimForReport(result.stderr),
+  };
+}
+
 function compareAnalysis(expected, actual) {
   const findings = [];
   compareField("people", expected.people, actual.people, findings);
@@ -117,8 +131,8 @@ function pickAnalysisFields(analysis) {
   };
 }
 
-async function runOpenRouterQa(localReport, uiReport) {
-  const prompt = buildAiPrompt(localReport, uiReport);
+async function runOpenRouterQa(localReport, uiReport, browserReport) {
+  const prompt = buildAiPrompt(localReport, uiReport, browserReport);
   try {
     const response = await fetch(OPENROUTER_URL, {
       method: "POST",
@@ -168,9 +182,9 @@ async function runOpenRouterQa(localReport, uiReport) {
   }
 }
 
-function buildAiPrompt(localReport, uiReport) {
+function buildAiPrompt(localReport, uiReport, browserReport) {
   return JSON.stringify({
-    task: "Act as an autonomous QA user for a Russian AI notes app. Review parser QA and UI smoke results. Find risky gaps, propose new parser test phrases, UI journeys, and prioritized fixes.",
+    task: "Act as an autonomous QA user for a Russian AI notes app. Review parser QA, static UI smoke results, and real browser journey results. Find risky gaps, propose new parser test phrases, UI journeys, and prioritized fixes.",
     requiredJsonShape: {
       summary: "short Russian summary",
       risks: ["array of product/parser/UI risks"],
@@ -195,6 +209,7 @@ function buildAiPrompt(localReport, uiReport) {
     },
     localReport,
     uiReport,
+    browserReport,
   });
 }
 
@@ -236,6 +251,12 @@ function renderMarkdownReport(report) {
   if (report.ui.stderr) lines.push(`- ${report.ui.stderr}`);
   lines.push("");
 
+  lines.push("## Browser Journey Audit", "");
+  lines.push(`Status: ${report.browser.status}`);
+  if (report.browser.stdout) lines.push("```text", report.browser.stdout, "```");
+  if (report.browser.stderr) lines.push("```text", report.browser.stderr, "```");
+  lines.push("");
+
   lines.push("## AI Review", "");
   if (report.ai.status === "completed") {
     lines.push(`Model: ${report.ai.model}`, "");
@@ -247,4 +268,9 @@ function renderMarkdownReport(report) {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+function trimForReport(value = "") {
+  const trimmed = value.trim();
+  return trimmed.length > 5_000 ? `${trimmed.slice(0, 5_000)}\n...truncated...` : trimmed;
 }
