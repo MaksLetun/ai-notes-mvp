@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+qa-report.json
+qa-report.md
+node_modules/
+.DS_Store
