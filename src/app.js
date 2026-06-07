@@ -1563,6 +1563,7 @@ function bindEvents() {
       if (!action) return;
       action.status = button.dataset.actionStatus;
       action.updatedAt = new Date().toISOString();
+      state.actionFilter = action.status;
       saveState();
       render();
     });
