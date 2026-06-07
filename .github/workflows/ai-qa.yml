@@ -1,0 +1,42 @@
+name: AI QA
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */6 * * *"
+
+jobs:
+  ai-qa:
+    name: OpenRouter QA review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openai/gpt-4.1-mini' }}
+      OPENROUTER_SITE_URL: https://github.com/${{ github.repository }}
+      OPENROUTER_APP_NAME: AI Notes MVP QA
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run local checks
+        run: npm run check
+
+      - name: Run AI QA agent
+        run: node scripts/ai-qa-agent.js
+
+      - name: Upload QA report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-qa-report
+          path: |
+            qa-report.md
+            qa-report.json
+          if-no-files-found: ignore
