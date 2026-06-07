@@ -1,0 +1,86 @@
+name: AI Repair
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 */6 * * *"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  ai-repair:
+    name: OpenRouter repair proposal
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      OPENROUTER_MODEL: ${{ vars.OPENROUTER_MODEL || 'openai/gpt-4.1-mini' }}
+      OPENROUTER_REPAIR_MODEL: ${{ vars.OPENROUTER_REPAIR_MODEL || vars.OPENROUTER_MODEL || 'openai/gpt-4.1-mini' }}
+      OPENROUTER_SITE_URL: https://github.com/${{ github.repository }}
+      OPENROUTER_APP_NAME: AI Notes MVP Repair
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run AI repair agent
+        run: node scripts/ai-repair-agent.js
+
+      - name: Upload repair report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-repair-report
+          path: |
+            qa-report.md
+            qa-report.json
+            repair-report.md
+            repair-report.json
+            browser-report.json
+            test-results
+          if-no-files-found: ignore
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create repair branch
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          BRANCH="codex/ai-repair-${GITHUB_RUN_ID}"
+          git config user.name "ai-notes-repair-bot"
+          git config user.email "ai-notes-repair-bot@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add .
+          git commit -m "Apply AI repair proposal"
+          git push origin "$BRANCH"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+      - name: Open pull request
+        if: steps.changes.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "AI repair proposal" \
+            --body "Autonomous AI repair proposal. The workflow already ran npm run check before creating this PR. Review before merge."

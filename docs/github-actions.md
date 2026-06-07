@@ -1,6 +1,6 @@
 # GitHub Actions
 
-The repository has two workflows.
+The repository has three workflows.
 
 ## CI
 
@@ -68,16 +68,43 @@ Optional repository variable:
 OPENROUTER_MODEL=openai/gpt-4.1-mini
 ```
 
+## AI Repair
+
+File:
+
+```text
+.github/workflows/ai-repair.yml
+```
+
+Runs:
+
+- manually through GitHub Actions;
+- every 6 hours by schedule, offset from AI QA.
+
+It runs:
+
+```bash
+node scripts/ai-repair-agent.js
+```
+
+The repair agent:
+
+- runs the QA report first;
+- asks OpenRouter for a conservative unified diff;
+- applies the patch only if `git apply --check` passes;
+- runs `npm run check`;
+- pushes a `codex/ai-repair-*` branch;
+- opens a pull request.
+
+Optional repository variable:
+
+```text
+OPENROUTER_REPAIR_MODEL=openai/gpt-4.1-mini
+```
+
 ## Autonomy Model
 
-GitHub Actions currently performs checks and produces reports. Code-changing autonomy should happen through a safe PR flow:
-
-1. agent creates a branch;
-2. agent adds tests or fixes;
-3. checks run;
-4. user reviews and merges.
-
-Direct writes to `main` are intentionally avoided.
+GitHub Actions checks the app and can create repair PRs. Direct writes to `main` are intentionally avoided.
 
 ## VPS Next Step
 

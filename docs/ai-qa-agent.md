@@ -64,7 +64,30 @@ When a weird app behavior appears, add a natural phrase to `tests/fixtures/note-
 
 ## Autonomous Background Fixer
 
-The Codex app has a recurring automation:
+The project has two automation layers.
+
+### GitHub AI Repair
+
+File:
+
+```text
+.github/workflows/ai-repair.yml
+```
+
+It runs manually or every 6 hours. The repair workflow:
+
+- runs the full QA agent;
+- asks OpenRouter for a small unified diff only when the evidence is strong;
+- applies the patch;
+- runs `npm run check`;
+- pushes a `codex/ai-repair-*` branch;
+- opens a pull request for review.
+
+It does not silently rewrite `main`.
+
+### Local Codex Automation
+
+The Codex app can also have a recurring local automation:
 
 ```text
 Autonomous AI Notes QA Fixer
