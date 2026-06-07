@@ -32,6 +32,14 @@ const expectedSelectors = [
   "data-export-state",
   "importStateFile",
   "data-reset-state",
+  "data-action-status",
+  "data-open-note",
+  "editNoteReminder",
+  "editNotePeople",
+  "editNoteSignal",
+  "editNoteTopic",
+  "renderCalendarPlan",
+  "renderReviewCenter",
 ];
 
 const findings = [

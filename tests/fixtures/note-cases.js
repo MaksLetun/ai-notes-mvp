@@ -214,4 +214,56 @@ export const noteCases = [
       hasTask: true,
     },
   },
+  {
+    text: "Договориться с Костей про отправку отчета на следующее утро",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: ["Костя"],
+      reminder: null,
+      topic: "Задачи",
+      hasTask: true,
+    },
+  },
+  {
+    text: "Если не получится созвониться с Олесей сегодня, запланировать на завтра утром",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: ["Олеся"],
+      reminder: "7 июня",
+      topic: "Встречи",
+      hasTask: true,
+    },
+  },
+  {
+    text: "Обсудить и принять решения по отчету и бюджету в пятницу с Иваном и Светой",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: ["Иван", "Света"],
+      reminder: "12 июня",
+      topic: "Встречи",
+      hasTask: true,
+      hasDecision: true,
+    },
+  },
+  {
+    text: "Отложить обсуждение задачи по интеграции без точного срока, ответственный - Оля",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: ["Оля"],
+      reminder: null,
+      topic: "Задачи",
+      hasTask: true,
+    },
+  },
+  {
+    text: "Напомнить Сергею, Маше и Пете проверить результаты и принять решение",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: ["Сергей", "Маша", "Петр"],
+      reminder: null,
+      topic: "Задачи",
+      hasTask: true,
+      hasDecision: true,
+    },
+  },
 ];

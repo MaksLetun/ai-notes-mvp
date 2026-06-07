@@ -82,6 +82,7 @@ export function extractPeople(text) {
     "Задача",
     "Срочно",
     "Важно",
+    "Если",
     "Следующем",
     "Следующая",
     "Следующей",
@@ -118,6 +119,7 @@ export function extractPeople(text) {
     "Отчёт",
     "Детали",
     "Результатов",
+    "Интеграции",
   ]);
   return [
     ...new Set(
@@ -157,7 +159,7 @@ export function summarizeNote(text) {
 
 export function extractDecisions(text) {
   return splitSentences(text)
-    .filter((sentence) => /решил|решили|решить|решение|договорил|договорились|выбрали|утверд/i.test(sentence))
+    .filter((sentence) => /решил|решили|решить|решени|договорил|договорились|выбрали|утверд/i.test(sentence))
     .slice(0, 3);
 }
 
