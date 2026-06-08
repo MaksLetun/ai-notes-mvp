@@ -318,6 +318,7 @@ textarea {
 }
 
 .text-control {
+  width: 100%;
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1034,6 +1035,24 @@ button.entity-card {
 .integration-card p {
   color: #34434a;
   line-height: 1.5;
+}
+
+.setting-field {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.setting-field span,
+.sync-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sync-status {
+  display: block;
+  margin-bottom: 12px;
 }
 
 .digest {

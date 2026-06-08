@@ -1,6 +1,9 @@
-import { addDays, analyzeNote, dictionaries, formatDate, inferSpace } from "./note-analyzer.js";
+import { addDays, analyzeNote, dictionaries, formatDate, inferSpace } from "./note-analyzer.js?v=20260608-sync2";
 
 const STORAGE_KEY = "ai-notes-mvp-v5";
+const SYNC_API_BASE = "/api";
+let syncTimer = null;
+let isApplyingRemoteState = false;
 
 const dataSchema = {
   note: ["id", "text", "space", "status", "favorite", "sensitive", "analysis", "createdAt", "updatedAt"],
@@ -145,6 +148,10 @@ function loadState() {
       confirmExternalActions: true,
       keepAuditLog: true,
       desktopMode: true,
+      syncEnabled: false,
+      syncCode: "",
+      syncStatus: "Не подключено",
+      syncUpdatedAt: "",
     },
     activeView: "inbox",
     selectedNoteId: notes[0].id,
@@ -187,6 +194,10 @@ function normalizeAppState(parsed = {}) {
       confirmExternalActions: true,
       keepAuditLog: true,
       desktopMode: true,
+      syncEnabled: false,
+      syncCode: "",
+      syncStatus: "Не подключено",
+      syncUpdatedAt: "",
       ...(parsed.settings || {}),
     },
     activeView: parsed.activeView || "inbox",
@@ -201,26 +212,34 @@ function normalizeAppState(parsed = {}) {
 }
 
 function saveState() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      notes: state.notes,
-      actions: state.actions,
-      suggestions: state.suggestions,
-      jobs: state.jobs,
-      auditLog: state.auditLog,
-      integrations: state.integrations,
-      spaces: state.spaces,
-      settings: state.settings,
-      activeView: state.activeView,
-      selectedNoteId: state.selectedNoteId,
-      selectedThread: state.selectedThread,
-      activeFilter: state.activeFilter,
-      actionFilter: state.actionFilter,
-      editingNoteId: state.editingNoteId,
-      query: state.query,
-    }),
-  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState({ includeLocalSync: true })));
+  scheduleSyncPush();
+}
+
+function serializeState({ includeLocalSync = false } = {}) {
+  const settings = { ...state.settings };
+  if (!includeLocalSync) {
+    delete settings.syncCode;
+    delete settings.syncStatus;
+  }
+
+  return {
+    notes: state.notes,
+    actions: state.actions,
+    suggestions: state.suggestions,
+    jobs: state.jobs,
+    auditLog: state.auditLog,
+    integrations: state.integrations,
+    spaces: state.spaces,
+    settings,
+    activeView: state.activeView,
+    selectedNoteId: state.selectedNoteId,
+    selectedThread: state.selectedThread,
+    activeFilter: state.activeFilter,
+    actionFilter: state.actionFilter,
+    editingNoteId: state.editingNoteId,
+    query: state.query,
+  };
 }
 
 function enrichNote(note) {
@@ -982,6 +1001,22 @@ function renderSettings() {
         <button class="ghost danger" data-reset-state="true">Сбросить демо</button>
       </div>
     </section>
+    <section class="settings-card glass-panel">
+      <span class="eyebrow">Sync</span>
+      <h2>${state.settings.syncEnabled ? "Синхронизация включена" : "Синхронизация выключена"}</h2>
+      <p>Введи личный синхро-код на Mac, iPhone или в другом браузере. Заметки будут храниться на VPS и подтягиваться по этому коду.</p>
+      <label class="setting-field">
+        <span>Синхро-код</span>
+        <input id="syncCode" class="text-control" type="password" autocomplete="off" value="${escapeHtml(state.settings.syncCode || "")}" placeholder="Минимум 6 символов" />
+      </label>
+      <small class="sync-status">${escapeHtml(syncStatusText())}</small>
+      <div class="settings-actions">
+        <button class="ghost" data-save-sync-code="true">${state.settings.syncEnabled ? "Обновить код" : "Подключить"}</button>
+        <button class="ghost" data-sync-pull="true">Загрузить с сервера</button>
+        <button class="ghost" data-sync-push="true">Сохранить на сервер</button>
+        <button class="ghost danger" data-sync-disable="true">Отключить</button>
+      </div>
+    </section>
   </div>`;
 }
 
@@ -1457,8 +1492,123 @@ function integrationReadiness(id) {
     openrouter: "UI и QA-агенты готовы. В приложении пока локальный анализ; реальный OpenRouter нужно подключать через VPS API.",
     "yandex-calendar": "Сейчас создаются календарные черновики внутри приложения. Внешняя запись в календарь будет следующим этапом.",
     telegram: "Telegram-бот пока не подключен. Контур нужен для быстрого ввода, дайджестов и уведомлений.",
-    sync: "Синхронизация пока не подключена. Нужны аккаунт, backend и серверное хранилище.",
+    sync: state.settings.syncEnabled
+      ? `Серверное хранилище включено. ${syncStatusText()}`
+      : "Серверное хранилище готово. Включи его в настройках через личный синхро-код.",
   }[id] || "Контур интеграции отмечен, внешнее подключение еще не выполняется.";
+}
+
+function syncStatusText() {
+  const parts = [state.settings.syncStatus || "Не подключено"];
+  if (state.settings.syncUpdatedAt) {
+    parts.push(`последнее обновление: ${new Date(state.settings.syncUpdatedAt).toLocaleString("ru-RU", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}`);
+  }
+  return parts.join(" · ");
+}
+
+function setSyncStatus(status, updatedAt = state.settings.syncUpdatedAt || "") {
+  state.settings.syncStatus = status;
+  state.settings.syncUpdatedAt = updatedAt;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState({ includeLocalSync: true })));
+}
+
+function getSyncCode() {
+  return String(state.settings.syncCode || "").trim();
+}
+
+function canSync() {
+  return state.settings.syncEnabled && getSyncCode().length >= 6;
+}
+
+function scheduleSyncPush() {
+  if (isApplyingRemoteState || !canSync()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    pushSyncState({ silent: true });
+  }, 900);
+}
+
+async function requestSync(path, payload) {
+  const response = await fetch(`${SYNC_API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) {
+    throw new Error(data.error || `Sync request failed with ${response.status}`);
+  }
+  return data;
+}
+
+async function pushSyncState({ silent = false } = {}) {
+  if (!canSync()) {
+    if (!silent) setSyncStatus("Введите синхро-код минимум 6 символов.");
+    return;
+  }
+
+  try {
+    if (!silent) setSyncStatus("Сохраняю на сервер...");
+    const data = await requestSync("/sync/push", {
+      workspaceKey: getSyncCode(),
+      state: serializeState({ includeLocalSync: false }),
+    });
+    setSyncStatus("Сохранено на сервере", data.updatedAt || new Date().toISOString());
+    if (!silent) render();
+  } catch (error) {
+    setSyncStatus(`Ошибка синхронизации: ${error.message}`);
+    if (!silent) render();
+  }
+}
+
+async function pullSyncState() {
+  if (!canSync()) {
+    setSyncStatus("Введите синхро-код минимум 6 символов.");
+    render();
+    return;
+  }
+
+  try {
+    setSyncStatus("Загружаю с сервера...");
+    render();
+    const data = await requestSync("/sync/pull", { workspaceKey: getSyncCode() });
+    if (!data.exists) {
+      setSyncStatus("На сервере пока пусто. Сохрани текущие заметки.");
+      render();
+      return;
+    }
+
+    const syncCode = state.settings.syncCode;
+    const imported = normalizeAppState(data.state || {});
+    isApplyingRemoteState = true;
+    Object.keys(state).forEach((key) => delete state[key]);
+    Object.assign(state, imported, {
+      settings: {
+        ...imported.settings,
+        syncEnabled: true,
+        syncCode,
+        syncStatus: "Загружено с сервера",
+        syncUpdatedAt: data.updatedAt || new Date().toISOString(),
+      },
+      activeView: "inbox",
+      activeFilter: "all",
+      query: "",
+      editingNoteId: "",
+    });
+    state.selectedNoteId = state.notes[0]?.id || "";
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState({ includeLocalSync: true })));
+    isApplyingRemoteState = false;
+    render();
+  } catch (error) {
+    isApplyingRemoteState = false;
+    setSyncStatus(`Ошибка синхронизации: ${error.message}`);
+    render();
+  }
 }
 
 function bindEvents() {
@@ -1729,6 +1879,42 @@ function bindEvents() {
       saveState();
       render();
     });
+  });
+
+  document.querySelector("[data-save-sync-code]")?.addEventListener("click", async () => {
+    const syncCode = document.querySelector("#syncCode")?.value.trim() || "";
+    state.settings.syncCode = syncCode;
+    state.settings.syncEnabled = syncCode.length >= 6;
+    setSyncStatus(state.settings.syncEnabled ? "Синхронизация подключена" : "Введите минимум 6 символов.");
+    addAuditEvent("settings", "Синхронизация обновлена", state.settings.syncEnabled ? "Синхронизация включена" : "Код слишком короткий");
+    saveState();
+    render();
+    if (state.settings.syncEnabled) await pushSyncState({ silent: false });
+  });
+
+  document.querySelector("[data-sync-push]")?.addEventListener("click", async () => {
+    const syncCode = document.querySelector("#syncCode")?.value.trim() || state.settings.syncCode || "";
+    state.settings.syncCode = syncCode;
+    state.settings.syncEnabled = syncCode.length >= 6;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState({ includeLocalSync: true })));
+    await pushSyncState({ silent: false });
+  });
+
+  document.querySelector("[data-sync-pull]")?.addEventListener("click", async () => {
+    const syncCode = document.querySelector("#syncCode")?.value.trim() || state.settings.syncCode || "";
+    state.settings.syncCode = syncCode;
+    state.settings.syncEnabled = syncCode.length >= 6;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState({ includeLocalSync: true })));
+    await pullSyncState();
+  });
+
+  document.querySelector("[data-sync-disable]")?.addEventListener("click", () => {
+    state.settings.syncEnabled = false;
+    state.settings.syncCode = "";
+    setSyncStatus("Синхронизация отключена", "");
+    addAuditEvent("settings", "Синхронизация отключена", "Локальные заметки остались в браузере.");
+    saveState();
+    render();
   });
 
   document.querySelectorAll("[data-connect]").forEach((button) => {
