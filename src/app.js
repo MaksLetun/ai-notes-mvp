@@ -350,12 +350,9 @@ function renderInbox(notes, selected) {
       <textarea id="noteText" placeholder="Запиши мысль, задачу или договоренность..."></textarea>
       <div class="composer-actions">
         <div class="composer-meta">
-          <label>
-            <span>Пространство</span>
-            <select id="noteSpace" class="select-control" aria-label="Пространство заметки">
-              ${state.spaces.map((space) => `<option value="${escapeHtml(space)}">${escapeHtml(space)}</option>`).join("")}
-            </select>
-          </label>
+          <select id="noteSpace" class="select-control" aria-label="Пространство заметки">
+            ${state.spaces.map((space) => `<option value="${escapeHtml(space)}">${escapeHtml(space)}</option>`).join("")}
+          </select>
           <details class="composer-more">
             <summary>Шаблоны</summary>
             <div class="template-row">

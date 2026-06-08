@@ -281,8 +281,10 @@ small {
 }
 
 .composer {
-  padding: 12px;
-  border-radius: 18px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 20px;
 }
 
 .template-row {
@@ -295,21 +297,21 @@ small {
 textarea {
   display: block;
   width: 100%;
-  min-height: 112px;
+  min-height: 116px;
   resize: vertical;
   border: 0;
   outline: 0;
   border-radius: 16px;
   padding: 18px 20px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .select-control {
-  min-height: 38px;
+  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0 34px 0 12px;
+  padding: 0 36px 0 14px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.6);
   outline: 0;
@@ -330,27 +332,16 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 10px;
+  min-height: 46px;
+  padding: 0;
 }
 
 .composer-meta {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-}
-
-.composer-meta label {
-  display: grid;
-  gap: 5px;
-}
-
-.composer-meta label span {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0;
 }
 
 .composer-more {
@@ -358,10 +349,10 @@ textarea {
 }
 
 .composer-more summary {
-  min-height: 38px;
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.42);
@@ -371,6 +362,11 @@ textarea {
   color: var(--accent-dark);
   border-color: rgba(45, 125, 120, 0.18);
   background: rgba(45, 125, 120, 0.1);
+}
+
+.composer #addNote {
+  min-height: 42px;
+  padding-inline: 18px;
 }
 
 .filter-bar {
