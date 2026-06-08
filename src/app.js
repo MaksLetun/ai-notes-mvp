@@ -78,27 +78,35 @@ const noteTemplates = [
   },
 ];
 
+function createId() {
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 const seedNotes = [
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     text: "После созвона с Машей: договорились вернуться к макету в пятницу, проверить список правок и решить, что пойдет в первый релиз.",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 25).toISOString(),
     space: "Работа",
   },
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     text: "Петр прислал идею для личного бюджета: разнести платежи по категориям и через неделю посмотреть, где лишние траты.",
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 7).toISOString(),
     space: "Финансы",
   },
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     text: "Нужно подготовить заметки к встрече по проекту: цели, открытые вопросы, владельцы задач и решения, которые нельзя потерять.",
     createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
     space: "Работа",
   },
   {
-    id: crypto.randomUUID(),
+    id: createId(),
     text: "Идея: сделать утренний дайджест из заметок — что сегодня важно, какие обещания зависли и что стоит вынести в календарь.",
     createdAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
     space: "Личное",
@@ -1149,7 +1157,7 @@ function createAction(type, noteId) {
   const note = state.notes.find((item) => item.id === noteId);
   if (!note) return;
   const action = {
-    id: crypto.randomUUID(),
+    id: createId(),
     noteId,
     type,
     status: "open",
@@ -1185,7 +1193,7 @@ function buildSuggestionsForNote(note) {
   if (note.analysis.tasks.length || note.analysis.reminder || note.analysis.signal !== "Обычный") {
     suggestions.push({
       ...base,
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: "followup",
       title: buildActionTitle("followup", note),
       text: note.analysis.action,
@@ -1199,7 +1207,7 @@ function buildSuggestionsForNote(note) {
       : `Предлагаю вынести это в календарь как черновик события или напоминания: ${note.analysis.summary}`;
     suggestions.push({
       ...base,
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: "calendar",
       title: `Черновик календаря: ${note.analysis.reminder}`,
       text: reminderText,
@@ -1210,7 +1218,7 @@ function buildSuggestionsForNote(note) {
   if (note.analysis.decisions.length) {
     suggestions.push({
       ...base,
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: "decision",
       title: "Зафиксировать решение",
       text: `В заметке есть решение. Лучше сохранить его в треде и добавить контрольный follow-up.`,
@@ -1221,7 +1229,7 @@ function buildSuggestionsForNote(note) {
   if (!suggestions.length) {
     suggestions.push({
       ...base,
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: "thread",
       title: `Связать с тредом: ${note.analysis.topic}`,
       text: "Предлагаю оставить как контекст и связать с похожими заметками.",
@@ -1234,7 +1242,7 @@ function buildSuggestionsForNote(note) {
 
 function buildPipelineJob(note) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     noteId: note.id,
     type: "note-analysis",
     status: "review",
@@ -1255,7 +1263,7 @@ function acceptSuggestion(id) {
   if (suggestion.payload?.actionType && note) {
     const type = suggestion.payload.actionType === "thread-summary" ? "followup" : suggestion.payload.actionType;
     state.actions.unshift({
-      id: crypto.randomUUID(),
+      id: createId(),
       noteId: note.id,
       type,
       status: "open",
@@ -1301,7 +1309,7 @@ function normalizeAction(action) {
 
 function normalizeSuggestion(suggestion) {
   return {
-    id: suggestion.id || crypto.randomUUID(),
+    id: suggestion.id || createId(),
     status: suggestionStatuses.includes(suggestion.status) ? suggestion.status : "pending",
     kind: suggestion.kind || "thread",
     payload: suggestion.payload || {},
@@ -1312,7 +1320,7 @@ function normalizeSuggestion(suggestion) {
 
 function normalizePipelineJob(job) {
   return {
-    id: job.id || crypto.randomUUID(),
+    id: job.id || createId(),
     type: job.type || "note-analysis",
     status: job.status || "review",
     steps: job.steps || ["capture", "analysis", "review"],
@@ -1324,7 +1332,7 @@ function normalizePipelineJob(job) {
 
 function normalizeAuditEvent(event) {
   return {
-    id: event.id || crypto.randomUUID(),
+    id: event.id || createId(),
     type: event.type || "system",
     label: event.label || "Событие",
     detail: event.detail || "",
@@ -1334,7 +1342,7 @@ function normalizeAuditEvent(event) {
 
 function buildAuditEvent(type, label, detail) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     type,
     label,
     detail,
@@ -1491,7 +1499,7 @@ function bindEvents() {
     const space = document.querySelector("#noteSpace")?.value || "Личное";
     const text = textarea.value.trim();
     if (!text) return;
-    const note = enrichNote({ id: crypto.randomUUID(), text, space, createdAt: new Date().toISOString() });
+    const note = enrichNote({ id: createId(), text, space, createdAt: new Date().toISOString() });
     state.notes.unshift(note);
     queueSuggestionsForNote(note);
     addAuditEvent("note", "Создана заметка", note.analysis.summary);
@@ -1682,7 +1690,7 @@ function bindEvents() {
       const thread = getTopics().find((item) => item.name === button.dataset.threadAction);
       if (!thread) return;
       state.actions.unshift({
-        id: crypto.randomUUID(),
+        id: createId(),
         noteId: thread.notes[0].id,
         type: "thread-summary",
         status: "open",
