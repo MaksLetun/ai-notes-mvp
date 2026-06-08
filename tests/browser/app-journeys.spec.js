@@ -59,7 +59,7 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".meta-grid")).toContainText("Точного срока нет");
 
     await page.locator('[data-view="review"]').click();
-    await expect(page.locator(".suggestion-card")).toContainText("мягкое напоминание");
+    await expect(page.locator('.suggestion-card:has-text("мягкое напоминание")')).toBeVisible();
 
     await page.locator('[data-view="calendar"]').click();
     await expect(page.locator(".calendar-board")).toContainText("Точного срока нет");
