@@ -4,6 +4,27 @@ const STORAGE_KEY = "ai-notes-mvp-v5";
 const SYNC_API_BASE = "/api";
 let syncTimer = null;
 let isApplyingRemoteState = false;
+let shouldPersistAfterLoad = false;
+let introStep = 0;
+let introComplete = false;
+
+const introMessages = [
+  {
+    kicker: "Добро пожаловать",
+    title: "AI-заметки",
+    text: "Записывай мысли, задачи и договоренности свободным текстом.",
+  },
+  {
+    kicker: "Тихая автоматизация",
+    title: "Сроки, люди и действия",
+    text: "Сервис сам выделяет важное, предлагает follow-up и помогает не терять контекст.",
+  },
+  {
+    kicker: "Рабочая память",
+    title: "Все готово",
+    text: "Начни с первой заметки. Остальное приложение аккуратно разложит по местам.",
+  },
+];
 
 const dataSchema = {
   note: ["id", "text", "space", "status", "favorite", "sensitive", "analysis", "createdAt", "updatedAt"],
@@ -81,6 +102,13 @@ const noteTemplates = [
   },
 ];
 
+const demoNoteTexts = new Set([
+  "После созвона с Машей: договорились вернуться к макету в пятницу, проверить список правок и решить, что пойдет в первый релиз.",
+  "Петр прислал идею для личного бюджета: разнести платежи по категориям и через неделю посмотреть, где лишние траты.",
+  "Нужно подготовить заметки к встрече по проекту: цели, открытые вопросы, владельцы задач и решения, которые нельзя потерять.",
+  "Идея: сделать утренний дайджест из заметок — что сегодня важно, какие обещания зависли и что стоит вынести в календарь.",
+]);
+
 function createId() {
   if (globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
@@ -88,33 +116,6 @@ function createId() {
 
   return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
-
-const seedNotes = [
-  {
-    id: createId(),
-    text: "После созвона с Машей: договорились вернуться к макету в пятницу, проверить список правок и решить, что пойдет в первый релиз.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 25).toISOString(),
-    space: "Работа",
-  },
-  {
-    id: createId(),
-    text: "Петр прислал идею для личного бюджета: разнести платежи по категориям и через неделю посмотреть, где лишние траты.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 7).toISOString(),
-    space: "Финансы",
-  },
-  {
-    id: createId(),
-    text: "Нужно подготовить заметки к встрече по проекту: цели, открытые вопросы, владельцы задач и решения, которые нельзя потерять.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
-    space: "Работа",
-  },
-  {
-    id: createId(),
-    text: "Идея: сделать утренний дайджест из заметок — что сегодня важно, какие обещания зависли и что стоит вынести в календарь.",
-    createdAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-    space: "Личное",
-  },
-];
 
 const state = loadState();
 
@@ -124,16 +125,13 @@ function loadState() {
     return normalizeAppState(JSON.parse(saved));
   }
 
-  const notes = seedNotes.map((note) => enrichNote(note));
-  const suggestions = notes.flatMap((note) => buildSuggestionsForNote(note));
-  const jobs = notes.map((note) => buildPipelineJob(note));
   return {
-    notes,
+    notes: [],
     actions: [],
-    suggestions,
-    jobs,
+    suggestions: [],
+    jobs: [],
     auditLog: [
-      buildAuditEvent("system", "MVP запущен", "Локальная рабочая память создана с демо-заметками."),
+      buildAuditEvent("system", "Рабочая область готова", "Создай первую заметку или подключи синхронизацию."),
     ],
     integrations: defaultIntegrations,
     spaces: defaultSpaces,
@@ -154,7 +152,7 @@ function loadState() {
       syncUpdatedAt: "",
     },
     activeView: "inbox",
-    selectedNoteId: notes[0].id,
+    selectedNoteId: "",
     selectedThread: "",
     activeFilter: "active",
     actionFilter: "open",
@@ -165,19 +163,28 @@ function loadState() {
 }
 
 function normalizeAppState(parsed = {}) {
-  const notes = (parsed.notes || []).map((note) => enrichNote(note));
-  const suggestions = (parsed.suggestions || []).map(normalizeSuggestion);
+  const removedDemoIds = new Set((parsed.notes || []).filter((note) => demoNoteTexts.has(note.text)).map((note) => note.id));
+  if (removedDemoIds.size) shouldPersistAfterLoad = true;
+
+  const notes = (parsed.notes || [])
+    .filter((note) => !removedDemoIds.has(note.id))
+    .map((note) => enrichNote(note));
+  const suggestions = (parsed.suggestions || [])
+    .filter((suggestion) => !removedDemoIds.has(suggestion.noteId))
+    .map(normalizeSuggestion);
   const missingSuggestions = notes
     .filter((note) => !suggestions.some((suggestion) => suggestion.noteId === note.id))
     .flatMap((note) => buildSuggestionsForNote(note));
-  const jobs = (parsed.jobs || []).map(normalizePipelineJob);
+  const jobs = (parsed.jobs || [])
+    .filter((job) => !removedDemoIds.has(job.noteId))
+    .map(normalizePipelineJob);
   const missingJobs = notes
     .filter((note) => !jobs.some((job) => job.noteId === note.id))
     .map((note) => buildPipelineJob(note));
 
   return {
     notes,
-    actions: (parsed.actions || []).map(normalizeAction),
+    actions: (parsed.actions || []).filter((action) => !removedDemoIds.has(action.noteId)).map(normalizeAction),
     suggestions: [...suggestions, ...missingSuggestions],
     jobs: [...jobs, ...missingJobs],
     auditLog: (parsed.auditLog || []).map(normalizeAuditEvent),
@@ -258,7 +265,57 @@ function enrichNote(note) {
   };
 }
 
+function renderIntro() {
+  const message = introMessages[introStep] || introMessages[introMessages.length - 1];
+  const progress = ((introStep + 1) / introMessages.length) * 100;
+  document.querySelector("#app").innerHTML = `
+    <main class="intro-screen">
+      <section class="intro-copy" aria-live="polite">
+        <span class="intro-kicker">${escapeHtml(message.kicker)}</span>
+        <h1>${escapeHtml(message.title)}</h1>
+        <p>${escapeHtml(message.text)}</p>
+        <div class="intro-progress" aria-hidden="true">
+          <span style="width: ${progress}%"></span>
+        </div>
+      </section>
+      <button class="intro-skip" data-skip-intro="true">Перейти к заметкам</button>
+    </main>
+  `;
+  document.querySelector("[data-skip-intro]")?.addEventListener("click", finishIntro);
+}
+
+function startIntro() {
+  renderIntro();
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    setTimeout(finishIntro, 600);
+    return;
+  }
+
+  const next = () => {
+    introStep += 1;
+    if (introStep >= introMessages.length) {
+      finishIntro();
+      return;
+    }
+    renderIntro();
+    setTimeout(next, 3000);
+  };
+
+  setTimeout(next, 3000);
+}
+
+function finishIntro() {
+  if (introComplete) return;
+  introComplete = true;
+  render();
+}
+
 function render() {
+  if (!introComplete) {
+    renderIntro();
+    return;
+  }
+
   const filteredNotes = getFilteredNotes();
   const selected = filteredNotes.find((note) => note.id === state.selectedNoteId) || filteredNotes[0] || null;
   const people = getPeople();
@@ -2006,4 +2063,8 @@ function escapeHtml(value) {
   }[char]));
 }
 
-render();
+if (shouldPersistAfterLoad) {
+  saveState();
+}
+
+startIntro();
