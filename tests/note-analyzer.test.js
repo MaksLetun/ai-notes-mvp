@@ -11,6 +11,7 @@ describe("note analyzer QA corpus", () => {
 
       assert.deepEqual(analysis.people, item.expect.people);
       assert.equal(analysis.reminder, item.expect.reminder);
+      if ("reminderKind" in item.expect) assert.equal(analysis.reminderKind, item.expect.reminderKind);
       assert.equal(analysis.topic, item.expect.topic);
 
       if ("signal" in item.expect) {

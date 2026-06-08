@@ -85,7 +85,8 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: [],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Встречи",
       hasTask: true,
       hasDecision: true,
@@ -136,7 +137,8 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: ["Сергей", "Анастасия"],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Проекты",
       hasTask: true,
     },
@@ -188,7 +190,8 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: ["Мария"],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Проекты",
       hasTask: true,
       hasDecision: true,
@@ -219,7 +222,8 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: ["Костя"],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Задачи",
       hasTask: true,
     },
@@ -250,7 +254,8 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: ["Оля"],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Задачи",
       hasTask: true,
     },
@@ -260,10 +265,22 @@ export const noteCases = [
     createdAt: "2026-06-06T09:00:00.000Z",
     expect: {
       people: ["Сергей", "Маша", "Петр"],
-      reminder: null,
+      reminder: "9 июня",
+      reminderKind: "suggested",
       topic: "Задачи",
       hasTask: true,
       hasDecision: true,
+    },
+  },
+  {
+    text: "Через несколько дней поднять вопрос о грейдировании в компании",
+    createdAt: "2026-06-06T09:00:00.000Z",
+    expect: {
+      people: [],
+      reminder: "9 июня",
+      reminderKind: "suggested",
+      topic: "Задачи",
+      hasTask: true,
     },
   },
 ];

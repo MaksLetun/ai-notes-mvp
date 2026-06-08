@@ -106,6 +106,7 @@ function compareAnalysis(expected, actual) {
   const findings = [];
   compareField("people", expected.people, actual.people, findings);
   compareField("reminder", expected.reminder, actual.reminder, findings);
+  if ("reminderKind" in expected) compareField("reminderKind", expected.reminderKind, actual.reminderKind, findings);
   compareField("topic", expected.topic, actual.topic, findings);
   if ("signal" in expected) compareField("signal", expected.signal, actual.signal, findings);
   if ("hasTask" in expected) compareField("hasTask", expected.hasTask, actual.tasks.length > 0, findings);
@@ -122,6 +123,7 @@ function pickAnalysisFields(analysis) {
   return {
     people: analysis.people,
     reminder: analysis.reminder,
+    reminderKind: analysis.reminderKind,
     topic: analysis.topic,
     signal: analysis.signal,
     urgency: analysis.urgency,

@@ -548,6 +548,14 @@ textarea {
   margin-top: 6px;
 }
 
+.meta-hint {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .panel-title {
   margin-bottom: 14px;
   color: var(--muted);

@@ -51,6 +51,20 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".calendar-board")).toContainText("15 июня");
   });
 
+  test("assigns a soft deadline when a task has no exact date", async ({ page }) => {
+    await resetApp(page);
+    await addNote(page, "Через несколько дней поднять вопрос о грейдировании в компании");
+
+    await expect(page.locator(".meta-grid")).toContainText("Мягкий срок");
+    await expect(page.locator(".meta-grid")).toContainText("Точного срока нет");
+
+    await page.locator('[data-view="review"]').click();
+    await expect(page.locator(".suggestion-card")).toContainText("мягкое напоминание");
+
+    await page.locator('[data-view="calendar"]').click();
+    await expect(page.locator(".calendar-board")).toContainText("Точного срока нет");
+  });
+
   test("hides private notes from normal inbox views", async ({ page }) => {
     await resetApp(page);
     await addNote(page, "Личная приватная заметка с Олей на завтра");

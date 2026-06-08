@@ -221,12 +221,12 @@ function enrichNote(note) {
     ...(note.analysisOverrides || {}),
   };
   return {
+    ...note,
     status: note.status || "active",
     space: note.space || inferSpace(note.text),
     favorite: Boolean(note.favorite),
     sensitive: Boolean(note.sensitive),
     analysisOverrides: note.analysisOverrides || {},
-    ...note,
     analysis,
   };
 }
@@ -449,7 +449,7 @@ function renderNoteDetail(note) {
     <p class="note-text">${escapeHtml(note.text)}</p>
     <div class="meta-grid">
       <div><span>Люди</span><strong>${note.analysis.people.join(", ") || "Не определены"}</strong></div>
-      <div><span>Срок</span><strong>${note.analysis.reminder || "Нет"}</strong></div>
+      <div><span>Срок</span><strong>${escapeHtml(reminderLabel(note))}</strong>${reminderHint(note)}</div>
       <div><span>Статус</span><strong>${note.analysis.urgency}</strong></div>
       <div><span>Пространство</span><strong>${escapeHtml(note.space)}</strong></div>
     </div>
@@ -784,9 +784,10 @@ function renderReminders(reminders) {
     ${followups.map((action) => renderActionItem(action)).join("")}
     ${reminders.map((note) => `
       <article class="timeline-item ${note.analysis.signal === "Сильный" ? "urgent" : ""}">
-        <time>${note.analysis.reminder}</time>
+        <time>${escapeHtml(reminderLabel(note))}</time>
         <div>
           <strong>${escapeHtml(note.analysis.people[0] || note.analysis.topic)}</strong>
+          ${reminderHint(note)}
           <p>${escapeHtml(note.text)}</p>
         </div>
       </article>
@@ -837,7 +838,8 @@ function renderCalendarItem(item) {
   }
   return `<div class="calendar-item">
     <b>${escapeHtml(item.analysis.topic)}</b>
-    <span>${escapeHtml(item.analysis.reminder || "Без даты")} · ${escapeHtml(item.space)}</span>
+    <span>${escapeHtml(reminderLabel(item))} · ${escapeHtml(item.space)}</span>
+    ${reminderHint(item)}
     <p>${escapeHtml(item.analysis.summary)}</p>
   </div>`;
 }
@@ -1037,7 +1039,7 @@ function getDigest() {
   const signals = getVisibleNotes().filter((note) => note.analysis.signal !== "Обычный");
   const actions = state.actions.slice(0, 4);
   const items = [
-    ...reminders.map((note) => ({ label: "Срок", meta: note.analysis.reminder, text: note.analysis.summary })),
+    ...reminders.map((note) => ({ label: note.analysis.reminderKind === "suggested" ? "Мягкий срок" : "Срок", meta: reminderLabel(note), text: note.analysis.summary })),
     ...signals.map((note) => ({ label: "Сигнал", meta: note.analysis.topic, text: note.analysis.summary })),
     ...actions.map((action) => ({
       label: actionLabel(action.type),
@@ -1170,12 +1172,15 @@ function buildSuggestionsForNote(note) {
   }
 
   if (note.analysis.reminder) {
+    const reminderText = note.analysis.reminderKind === "suggested"
+      ? `Предлагаю мягкое напоминание на ${note.analysis.reminder}, потому что точного срока в заметке нет: ${note.analysis.summary}`
+      : `Предлагаю вынести это в календарь как черновик события или напоминания: ${note.analysis.summary}`;
     suggestions.push({
       ...base,
       id: crypto.randomUUID(),
       kind: "calendar",
       title: `Черновик календаря: ${note.analysis.reminder}`,
-      text: `Предлагаю вынести это в календарь как черновик события или напоминания: ${note.analysis.summary}`,
+      text: reminderText,
       payload: { actionType: "calendar", reminder: note.analysis.reminder },
     });
   }
@@ -1357,6 +1362,16 @@ function actionStatusLabel(status) {
   }[status] || status;
 }
 
+function reminderLabel(item) {
+  return item.analysis?.reminder || "Нет";
+}
+
+function reminderHint(item) {
+  if (item.analysis?.reminderKind !== "suggested") return "";
+  const reason = item.analysis.reminderReason || "Точного срока нет, поставлен мягкий follow-up.";
+  return `<small class="meta-hint">${escapeHtml(reason)}</small>`;
+}
+
 function suggestionLabel(kind) {
   return {
     followup: "Follow-up",
@@ -1528,6 +1543,8 @@ function bindEvents() {
           topic,
           signal,
           reminder: reminder || null,
+          reminderKind: reminder ? "exact" : null,
+          reminderReason: reminder ? "Срок задан вручную." : "",
           people,
           urgency: reminder ? "Есть срок" : signal === "Сильный" ? "Следить" : "Без срока",
         },

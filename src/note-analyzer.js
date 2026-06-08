@@ -4,7 +4,7 @@ export const dictionaries = {
   topics: [
     ["Встречи", ["встреч", "созвон", "1:1", "обсудить", "переговор", "презентац"]],
     ["Проекты", ["проект", "релиз", "запуск", "дизайн", "разработка", "сайт"]],
-    ["Задачи", ["задач", "нужно", "сделать", "проверить", "подготовить", "отправить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "напомнить", "решить"]],
+    ["Задачи", ["задач", "нужно", "сделать", "проверить", "подготовить", "отправить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "напомнить", "решить", "поднять"]],
     ["Люди", ["коллег", "друг", "клиент", "команда", "партнер", "руководител"]],
     ["Финансы", ["деньги", "оплат", "счет", "налог", "бюджет", "платеж"]],
     ["Обучение", ["курс", "книга", "обуч", "изуч", "лекц", "материал"]],
@@ -12,28 +12,30 @@ export const dictionaries = {
     ["Идеи", ["идея", "придумал", "концепт", "гипотез", "можно сделать"]],
   ],
   signalWords: ["срочно", "важно", "завис", "проблем", "риск", "горит", "просроч", "устал", "снова", "не забыть"],
-  actionWords: ["нужно", "напомни", "напомнить", "вернуться", "запланировать", "обсудить", "подготовить", "проверить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "решить"],
+  actionWords: ["нужно", "напомни", "напомнить", "вернуться", "запланировать", "обсудить", "подготовить", "проверить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "решить", "поднять"],
 };
 
 export function analyzeNote(text, createdAt = new Date().toISOString()) {
   const lower = text.toLowerCase();
   const people = extractPeople(text);
   const topic = detectTopic(lower);
-  const reminder = detectReminder(lower, createdAt);
   const signalScore = dictionaries.signalWords.reduce((score, word) => score + (lower.includes(word) ? 1 : 0), 0);
   const hasAction = dictionaries.actionWords.some((word) => lower.includes(word));
+  const reminderDetails = detectReminderDetails(lower, createdAt, { hasAction, topic });
 
   return {
     topic,
     people,
-    reminder,
+    reminder: reminderDetails.label,
+    reminderKind: reminderDetails.kind,
+    reminderReason: reminderDetails.reason,
     signal: signalScore >= 2 ? "Сильный" : signalScore === 1 ? "Средний" : "Обычный",
-    urgency: reminder ? "Есть срок" : signalScore > 1 ? "Следить" : "Без срока",
+    urgency: reminderDetails.kind === "suggested" ? "Мягкий срок" : reminderDetails.label ? "Есть срок" : signalScore > 1 ? "Следить" : "Без срока",
     summary: summarizeNote(text),
     decisions: extractDecisions(text),
     tasks: extractTasks(text),
     action: hasAction ? suggestAction(topic, signalScore, people) : "Сохранить как контекст и связать с похожими заметками.",
-    confidence: Math.min(96, 68 + signalScore * 7 + people.length * 4 + (reminder ? 9 : 0)),
+    confidence: Math.min(96, 68 + signalScore * 7 + people.length * 4 + (reminderDetails.label ? 9 : 0)),
   };
 }
 
@@ -91,6 +93,8 @@ export function extractPeople(text) {
     "Нему",
     "Сегодня",
     "Завтра",
+    "Через",
+    "Несколько",
     "Среда",
     "Среду",
     "Среде",
@@ -139,17 +143,34 @@ export function detectTopic(lower) {
 }
 
 export function detectReminder(lower, createdAt) {
+  return detectReminderDetails(lower, createdAt).label;
+}
+
+export function detectReminderDetails(lower, createdAt, options = {}) {
   const date = new Date(createdAt);
-  if (lower.includes("перенести на завтра")) return formatDate(addDays(date, 1));
-  if (lower.includes("завтра")) return formatDate(addDays(date, 1));
-  if (lower.includes("сегодня")) return formatDate(date);
+  if (lower.includes("перенести на завтра")) return exactReminder(addDays(date, 1), "Найден явный перенос на завтра.");
+  if (lower.includes("завтра")) return exactReminder(addDays(date, 1), "Найден явный срок: завтра.");
+  if (lower.includes("сегодня")) return exactReminder(date, "Найден явный срок: сегодня.");
   const relativeDays = detectRelativeDays(lower);
-  if (relativeDays) return formatDate(addDays(date, relativeDays));
+  if (relativeDays) return exactReminder(addDays(date, relativeDays), `Найден явный относительный срок: через ${relativeDays} дн.`);
   const weekday = detectWeekday(lower);
-  if (weekday !== null) return nextWeekday(date, weekday);
-  if (lower.includes("недел")) return formatDate(addDays(date, 7));
-  if (lower.includes("месяц")) return formatDate(addDays(date, 30));
-  return null;
+  if (weekday !== null) {
+    return {
+      label: nextWeekday(date, weekday),
+      kind: "exact",
+      reason: "Найден день недели.",
+    };
+  }
+  if (lower.includes("недел")) return exactReminder(addDays(date, 7), "Найден относительный срок: неделя.");
+  if (lower.includes("месяц")) return exactReminder(addDays(date, 30), "Найден относительный срок: месяц.");
+  if (shouldSuggestSoftReminder(lower, options)) {
+    return {
+      label: formatDate(addDays(date, 3)),
+      kind: "suggested",
+      reason: "Точного срока нет, но есть действие. Поставлен мягкий follow-up через 3 дня.",
+    };
+  }
+  return emptyReminder();
 }
 
 export function summarizeNote(text) {
@@ -165,7 +186,7 @@ export function extractDecisions(text) {
 
 export function extractTasks(text) {
   return splitSentences(text)
-    .filter((sentence) => /нужно|сделать|проверить|подготовить|отправить|создать|вернуться|запланировать|обсудить|написать|уточнить|согласовать|договориться|порешать|отложить|позвонить|напомнить|решить/i.test(sentence))
+    .filter((sentence) => /нужно|сделать|проверить|подготовить|отправить|создать|вернуться|запланировать|обсудить|написать|уточнить|согласовать|договориться|порешать|отложить|позвонить|напомнить|решить|поднять/i.test(sentence))
     .slice(0, 4);
 }
 
@@ -223,6 +244,31 @@ function detectRelativeDays(lower) {
     семь: 7,
   };
   return words[match[1]] || Number(match[1]) || null;
+}
+
+function exactReminder(date, reason) {
+  return {
+    label: formatDate(date),
+    kind: "exact",
+    reason,
+  };
+}
+
+function emptyReminder() {
+  return {
+    label: null,
+    kind: null,
+    reason: "",
+  };
+}
+
+function shouldSuggestSoftReminder(lower, { hasAction = false, topic = "" } = {}) {
+  if (lower.includes("без срока")) return false;
+  if (lower.includes("вчера")) return false;
+  if (topic === "Идеи" && lower.trim().startsWith("идея")) return false;
+  if (/через\s+несколько\s+дн/.test(lower)) return true;
+  if (/(на днях|в ближайшее время|скоро|позже|потом|без точной даты|без точного срока|пока не назнач)/.test(lower)) return true;
+  return hasAction;
 }
 
 function splitSentences(text) {
