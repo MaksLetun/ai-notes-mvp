@@ -281,35 +281,35 @@ small {
 }
 
 .composer {
-  padding: 14px;
+  padding: 12px;
   border-radius: 18px;
 }
 
 .template-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 10px;
+  gap: 6px;
+  padding-top: 8px;
 }
 
 textarea {
   display: block;
   width: 100%;
-  min-height: 96px;
+  min-height: 112px;
   resize: vertical;
   border: 0;
   outline: 0;
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 16px;
+  padding: 18px 20px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.52);
 }
 
 .select-control {
-  min-height: 40px;
+  min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0 14px;
+  padding: 0 34px 0 12px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.6);
   outline: 0;
@@ -329,13 +329,48 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding-top: 12px;
+  gap: 12px;
+  padding-top: 10px;
 }
 
-.hint {
+.composer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.composer-meta label {
+  display: grid;
+  gap: 5px;
+}
+
+.composer-meta label span {
   color: var(--muted);
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.composer-more {
+  position: relative;
+}
+
+.composer-more summary {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.composer-more[open] summary {
+  color: var(--accent-dark);
+  border-color: rgba(45, 125, 120, 0.18);
+  background: rgba(45, 125, 120, 0.1);
 }
 
 .filter-bar {

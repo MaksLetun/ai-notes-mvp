@@ -349,17 +349,22 @@ function renderInbox(notes, selected) {
     <div class="composer glass-panel">
       <textarea id="noteText" placeholder="Запиши мысль, задачу или договоренность..."></textarea>
       <div class="composer-actions">
-        <select id="noteSpace" class="select-control" aria-label="Пространство заметки">
-          ${state.spaces.map((space) => `<option value="${escapeHtml(space)}">${escapeHtml(space)}</option>`).join("")}
-        </select>
+        <div class="composer-meta">
+          <label>
+            <span>Пространство</span>
+            <select id="noteSpace" class="select-control" aria-label="Пространство заметки">
+              ${state.spaces.map((space) => `<option value="${escapeHtml(space)}">${escapeHtml(space)}</option>`).join("")}
+            </select>
+          </label>
+          <details class="composer-more">
+            <summary>Шаблоны</summary>
+            <div class="template-row">
+              ${noteTemplates.map((template) => `<button class="chip" data-template="${template.id}">${escapeHtml(template.label)}</button>`).join("")}
+            </div>
+          </details>
+        </div>
         <button class="primary" id="addNote">Добавить заметку</button>
       </div>
-      <details class="composer-more">
-        <summary>Шаблоны</summary>
-        <div class="template-row">
-          ${noteTemplates.map((template) => `<button class="chip" data-template="${template.id}">${escapeHtml(template.label)}</button>`).join("")}
-        </div>
-      </details>
     </div>
     <div class="filter-bar">
       ${filterButton("active", "Активные")}
