@@ -253,31 +253,29 @@ function render() {
           </div>
         </div>
         <nav class="nav">
-          ${navButton("inbox", "Inbox", getVisibleNotes().length)}
+          ${navButton("inbox", "Заметки", getVisibleNotes().length)}
           ${navButton("today", "Сегодня", today.total)}
-          ${navButton("spaces", "Пространства", state.spaces.length)}
-          ${navButton("favorites", "Избранное", getVisibleNotes().filter((note) => note.favorite).length)}
-          ${navButton("people", "Люди", people.length)}
-          ${navButton("threads", "Треды", topics.length)}
-          ${navButton("review", "AI Review", pendingSuggestions.length)}
-          ${navButton("actions", "Действия", state.actions.filter((action) => action.status !== "done").length)}
           ${navButton("reminders", "Follow-up", reminders.length + getActionsByType("followup").length)}
           ${navButton("calendar", "Календарь", getActionsByType("calendar").length + getActionsByType("agenda").length)}
-          ${navButton("digest", "Дайджест", digest.items.length)}
-          ${navButton("radar", "Сигналы", signals.length)}
-          ${navButton("activity", "Журнал", state.auditLog.length)}
-          ${navButton("integrations", "Интеграции", state.integrations.length)}
-          ${navButton("settings", "Настройки", state.settings.privacyMode ? 1 : 0)}
+          ${navButton("review", "AI Review", pendingSuggestions.length)}
+          <details class="nav-more" ${isSecondaryView(state.activeView) ? "open" : ""}>
+            <summary>Еще</summary>
+            ${navButton("actions", "Действия", state.actions.filter((action) => action.status !== "done").length)}
+            ${navButton("people", "Люди", people.length)}
+            ${navButton("threads", "Темы", topics.length)}
+            ${navButton("spaces", "Пространства", state.spaces.length)}
+            ${navButton("favorites", "Избранное", getVisibleNotes().filter((note) => note.favorite).length)}
+            ${navButton("digest", "Дайджест", digest.items.length)}
+            ${navButton("radar", "Сигналы", signals.length)}
+            ${navButton("activity", "Журнал", state.auditLog.length)}
+            ${navButton("integrations", "Интеграции", state.integrations.length)}
+            ${navButton("settings", "Настройки", state.settings.privacyMode ? 1 : 0)}
+          </details>
         </nav>
-        <div class="mini-card">
-          <span>AI слой</span>
-          <strong>OpenRouter-ready</strong>
-          <small>Ключ будет храниться на VPS API. В браузере сейчас только безопасный mock-анализ.</small>
-        </div>
       </aside>
 
       <section class="workspace">
-        <header class="topbar glass-panel">
+        <header class="topbar">
           <div>
             <p class="eyebrow">Личная рабочая память</p>
             <h1>${viewTitle()}</h1>
@@ -322,6 +320,10 @@ function navButton(id, label, count) {
   </button>`;
 }
 
+function isSecondaryView(view) {
+  return ["actions", "people", "threads", "spaces", "favorites", "digest", "radar", "activity", "integrations", "settings"].includes(view);
+}
+
 function viewTitle() {
   return {
     inbox: "Быстрые заметки",
@@ -345,19 +347,21 @@ function viewTitle() {
 function renderInbox(notes, selected) {
   return `
     <div class="composer glass-panel">
-      <textarea id="noteText" placeholder="Запиши мысль как есть: встреча, идея, задача, обещание, покупка, решение, личное дело..."></textarea>
-      <div class="template-row">
-        ${noteTemplates.map((template) => `<button class="chip" data-template="${template.id}">${escapeHtml(template.label)}</button>`).join("")}
-      </div>
+      <textarea id="noteText" placeholder="Запиши мысль, задачу или договоренность..."></textarea>
       <div class="composer-actions">
         <select id="noteSpace" class="select-control" aria-label="Пространство заметки">
           ${state.spaces.map((space) => `<option value="${escapeHtml(space)}">${escapeHtml(space)}</option>`).join("")}
         </select>
-        <div class="hint">ИИ сам выделит людей, тему, срочность, срок, решения и следующий шаг.</div>
         <button class="primary" id="addNote">Добавить заметку</button>
       </div>
+      <details class="composer-more">
+        <summary>Шаблоны</summary>
+        <div class="template-row">
+          ${noteTemplates.map((template) => `<button class="chip" data-template="${template.id}">${escapeHtml(template.label)}</button>`).join("")}
+        </div>
+      </details>
     </div>
-    <div class="filter-bar glass-panel">
+    <div class="filter-bar">
       ${filterButton("active", "Активные")}
       ${filterButton("all", "Все")}
       ${filterButton("favorites", "Избранное")}
@@ -370,9 +374,6 @@ function renderInbox(notes, selected) {
       </div>
       <div class="note-detail glass-panel">
         ${selected ? renderNoteDetail(selected) : "<p>Пока нет заметок.</p>"}
-      </div>
-      <div class="insights glass-panel">
-        ${selected ? renderInsights(selected) : ""}
       </div>
     </div>
   `;
@@ -437,11 +438,13 @@ function renderNoteDetail(note) {
 
   return `
     <div class="detail-head">
-      <span class="pill">${note.analysis.topic}</span>
-      <span class="risk ${note.analysis.signal.toLowerCase()}">${note.analysis.signal} сигнал</span>
+      <div>
+        <span class="pill">${note.analysis.topic}</span>
+        <span class="risk ${note.analysis.signal.toLowerCase()}">${note.analysis.signal} сигнал</span>
+      </div>
+      <button class="ghost small" data-edit-note="${note.id}">Редактировать</button>
     </div>
     <div class="note-toolbar">
-      <button class="ghost small" data-edit-note="${note.id}">Редактировать</button>
       <button class="ghost small" data-toggle-note="favorite" data-note-id="${note.id}">${note.favorite ? "В избранном" : "В избранное"}</button>
       <button class="ghost small" data-toggle-note="sensitive" data-note-id="${note.id}">${note.sensitive ? "Приватная" : "Сделать приватной"}</button>
       <button class="ghost small" data-archive-note="${note.id}">${note.status === "archived" ? "Вернуть" : "В архив"}</button>
@@ -459,6 +462,7 @@ function renderNoteDetail(note) {
       ${note.analysis.decisions.length ? `<h3>Решения</h3><ul>${note.analysis.decisions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
       ${note.analysis.tasks.length ? `<h3>Задачи</h3><ul>${note.analysis.tasks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
     </div>
+    ${renderInsights(note)}
   `;
 }
 
@@ -511,16 +515,18 @@ function renderNoteEditor(note) {
 
 function renderInsights(note) {
   return `
-    <div class="panel-title">AI recommendation</div>
-    <p>${escapeHtml(note.analysis.action)}</p>
-    <div class="stack">
-      <button class="ghost" data-action="followup" data-note-action="${note.id}">Создать follow-up</button>
-      <button class="ghost" data-action="calendar" data-note-action="${note.id}">Вынести в календарь</button>
-      <button class="ghost" data-action="agenda" data-note-action="${note.id}">Подготовить agenda</button>
-      <button class="ghost" data-action="prep" data-note-action="${note.id}">Режим встречи</button>
-      <button class="ghost" data-action="postmeeting" data-note-action="${note.id}">Итоги встречи</button>
-    </div>
-    ${renderActionLog(note.id)}
+    <details class="insights">
+      <summary>AI-рекомендация</summary>
+      <p>${escapeHtml(note.analysis.action)}</p>
+      <div class="stack">
+        <button class="ghost" data-action="followup" data-note-action="${note.id}">Создать follow-up</button>
+        <button class="ghost" data-action="calendar" data-note-action="${note.id}">Вынести в календарь</button>
+        <button class="ghost" data-action="agenda" data-note-action="${note.id}">Подготовить agenda</button>
+        <button class="ghost" data-action="prep" data-note-action="${note.id}">Режим встречи</button>
+        <button class="ghost" data-action="postmeeting" data-note-action="${note.id}">Итоги встречи</button>
+      </div>
+      ${renderActionLog(note.id)}
+    </details>
   `;
 }
 
@@ -745,7 +751,7 @@ function renderActivityLog() {
 function renderActions() {
   const actions = getFilteredActions();
   return `<div class="actions-board">
-    <div class="filter-bar glass-panel">
+    <div class="filter-bar">
       ${actionFilterButton("open", "Новые")}
       ${actionFilterButton("progress", "В работе")}
       ${actionFilterButton("done", "Готово")}

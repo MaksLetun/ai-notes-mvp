@@ -46,6 +46,7 @@ const findings = [
   ...auditViews(),
   ...auditSelectors(),
   ...auditResponsiveCss(),
+  ...auditMinimalInterface(),
 ];
 
 if (findings.length) {
@@ -90,6 +91,32 @@ function auditResponsiveCss() {
     if (!stylesSource.includes(className)) {
       results.push(`Missing CSS rules for ${className}.`);
     }
+  }
+  return results;
+}
+
+function auditMinimalInterface() {
+  const results = [];
+  const sidebarMatch = appSource.match(/<nav class="nav">([\s\S]*?)<\/nav>/);
+  const sidebarMarkup = sidebarMatch?.[1] || "";
+  const moreIndex = sidebarMarkup.indexOf('<details class="nav-more"');
+  const beforeMore = moreIndex >= 0 ? sidebarMarkup.slice(0, moreIndex) : sidebarMarkup;
+  const primaryNavCount = [...beforeMore.matchAll(/navButton\("/g)].length;
+
+  if (primaryNavCount > 5) {
+    results.push(`Primary sidebar has ${primaryNavCount} visible items; keep secondary areas under "Еще".`);
+  }
+  if (moreIndex < 0) {
+    results.push('Missing collapsed secondary navigation under "Еще".');
+  }
+  if (appSource.includes('class="mini-card"')) {
+    results.push("Sidebar mini-card returned; keep AI/service details out of the main navigation.");
+  }
+  if (appSource.includes('<div class="insights glass-panel">')) {
+    results.push("AI recommendation returned as a permanent third column; keep it collapsed in note detail.");
+  }
+  if (!appSource.includes('<details class="composer-more">')) {
+    results.push("Composer templates should stay collapsed to reduce first-screen clutter.");
   }
   return results;
 }

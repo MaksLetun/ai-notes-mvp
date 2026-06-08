@@ -13,6 +13,14 @@ async function addNote(page, text) {
   await expect(page.locator(".note-text")).toContainText(text);
 }
 
+async function openView(page, view) {
+  const navButton = page.locator(`[data-view="${view}"]`);
+  if (!(await navButton.isVisible())) {
+    await page.locator(".nav-more summary").click();
+  }
+  await navButton.click();
+}
+
 test.describe("AI Notes user journeys", () => {
   test("creates a note, reviews AI suggestion, and completes an action", async ({ page }) => {
     await resetApp(page);
@@ -21,12 +29,12 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".meta-grid")).toContainText("Дима");
     await expect(page.locator(".meta-grid")).toContainText("10 июня");
 
-    await page.locator('[data-view="review"]').click();
+    await openView(page, "review");
     await expect(page.locator("h1")).toContainText("AI Review");
     await expect(page.locator(".suggestion-card").first()).toBeVisible();
     await page.locator("[data-accept-suggestion]").first().click();
 
-    await page.locator('[data-view="actions"]').click();
+    await openView(page, "actions");
     await expect(page.locator(".action-card").first()).toBeVisible();
     await page.locator('[data-action-status="progress"]').first().click();
     await expect(page.locator(".action-card").first()).toContainText("В работе");
@@ -46,7 +54,7 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".meta-grid")).toContainText("Оля, Петр");
     await expect(page.locator(".meta-grid")).toContainText("15 июня");
 
-    await page.locator('[data-view="calendar"]').click();
+    await openView(page, "calendar");
     await expect(page.locator("h1")).toContainText("Календарный план");
     await expect(page.locator(".calendar-board")).toContainText("15 июня");
   });
@@ -58,10 +66,10 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".meta-grid")).toContainText("Мягкий срок");
     await expect(page.locator(".meta-grid")).toContainText("Точного срока нет");
 
-    await page.locator('[data-view="review"]').click();
+    await openView(page, "review");
     await expect(page.locator('.suggestion-card:has-text("мягкое напоминание")').first()).toBeVisible();
 
-    await page.locator('[data-view="calendar"]').click();
+    await openView(page, "calendar");
     await expect(page.locator(".calendar-board")).toContainText("Точного срока нет");
   });
 
@@ -71,9 +79,9 @@ test.describe("AI Notes user journeys", () => {
     await page.locator('[data-toggle-note="sensitive"]').click();
     await expect(page.locator(".note-toolbar")).toContainText("Приватная");
 
-    await page.locator('[data-view="settings"]').click();
+    await openView(page, "settings");
     await page.locator('[data-toggle-setting="hidePrivate"]').click();
-    await page.locator('[data-view="inbox"]').click();
+    await openView(page, "inbox");
 
     await expect(page.locator(".note-list")).not.toContainText("Личная приватная заметка");
   });
@@ -87,7 +95,7 @@ test.describe("AI Notes user journeys", () => {
     const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     expect(hasOverflow).toBe(false);
 
-    await page.locator('[data-view="review"]').click();
+    await openView(page, "review");
     await expect(page.locator("h1")).toContainText("AI Review");
     const reviewOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     expect(reviewOverflow).toBe(false);
