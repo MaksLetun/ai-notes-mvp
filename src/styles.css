@@ -751,17 +751,17 @@ button.entity-card {
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(240px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
 }
 
 .action-card {
   display: grid;
   align-content: start;
-  gap: 12px;
-  min-height: 260px;
-  border-radius: 22px;
-  padding: 18px;
+  gap: 10px;
+  min-height: 220px;
+  border-radius: 18px;
+  padding: 14px;
 }
 
 .action-card-head,
@@ -774,7 +774,7 @@ button.entity-card {
 
 .action-card h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .action-card p {
@@ -799,6 +799,47 @@ button.entity-card {
   gap: 10px;
   padding: 14px;
   border-radius: 18px;
+}
+
+.reminders-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+  gap: 12px;
+}
+
+.notification-card {
+  border-radius: 18px;
+  padding: 14px;
+}
+
+.notification-card h2 {
+  margin: 0;
+}
+
+.notification-card p {
+  color: #34434a;
+  line-height: 1.5;
+}
+
+.status-checklist {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.status-checklist span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--muted);
+}
+
+.status-checklist b {
+  color: var(--ink);
 }
 
 .timeline-item {
@@ -1034,10 +1075,18 @@ button.entity-card {
 }
 
 .integration-card {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 14px;
   min-height: 180px;
+}
+
+.integration-card small {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .settings-actions {
@@ -1210,6 +1259,7 @@ button.entity-card {
   .radar,
   .planner,
   .digest,
+  .reminders-layout,
   .today-layout,
   .review-layout,
   .activity-layout {
@@ -1249,6 +1299,10 @@ button.entity-card {
   .settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .integration-card {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1278,6 +1332,7 @@ button.entity-card {
   .manual-grid,
   .meta-grid,
   .timeline-item,
+  .reminders-layout,
   .review-layout,
   .activity-layout {
     grid-template-columns: 1fr;
@@ -1289,6 +1344,7 @@ button.entity-card {
   .note-list,
   .note-detail,
   .insights,
+  .notification-card,
   .review-main,
   .review-card,
   .activity-hero {

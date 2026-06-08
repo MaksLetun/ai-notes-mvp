@@ -12,7 +12,7 @@ export const dictionaries = {
     ["Идеи", ["идея", "придумал", "концепт", "гипотез", "можно сделать"]],
   ],
   signalWords: ["срочно", "важно", "завис", "проблем", "риск", "горит", "просроч", "устал", "снова", "не забыть"],
-  actionWords: ["нужно", "напомни", "напомнить", "вернуться", "запланировать", "обсудить", "подготовить", "проверить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "решить", "поднять"],
+  actionWords: ["нужно", "напомни", "напомнить", "вернуться", "запланировать", "обсудить", "подготовить", "проверить", "создать", "написать", "уточнить", "согласовать", "договориться", "порешать", "отложить", "позвонить", "решить", "поднять", "встретиться", "пригласить"],
 };
 
 export function analyzeNote(text, createdAt = new Date().toISOString()) {
@@ -72,6 +72,8 @@ export function extractPeople(text) {
     "Подготовить",
     "Проверить",
     "Создать",
+    "Встретиться",
+    "Пригласить",
     "Идея",
     "Встреча",
     "Участники",
@@ -148,11 +150,15 @@ export function detectReminder(lower, createdAt) {
 
 export function detectReminderDetails(lower, createdAt, options = {}) {
   const date = new Date(createdAt);
+  if (lower.includes("перенести на послезавтра")) return exactReminder(addDays(date, 2), "Найден явный перенос на послезавтра.");
+  if (lower.includes("послезавтра")) return exactReminder(addDays(date, 2), "Найден явный срок: послезавтра.");
   if (lower.includes("перенести на завтра")) return exactReminder(addDays(date, 1), "Найден явный перенос на завтра.");
   if (lower.includes("завтра")) return exactReminder(addDays(date, 1), "Найден явный срок: завтра.");
   if (lower.includes("сегодня")) return exactReminder(date, "Найден явный срок: сегодня.");
   const relativeDays = detectRelativeDays(lower);
   if (relativeDays) return exactReminder(addDays(date, relativeDays), `Найден явный относительный срок: через ${relativeDays} дн.`);
+  const relativeWeekdayReminder = detectRelativeWeekdayOffset(lower, date);
+  if (relativeWeekdayReminder) return relativeWeekdayReminder;
   const weekday = detectWeekday(lower);
   if (weekday !== null) {
     return {
@@ -186,7 +192,7 @@ export function extractDecisions(text) {
 
 export function extractTasks(text) {
   return splitSentences(text)
-    .filter((sentence) => /нужно|сделать|проверить|подготовить|отправить|создать|вернуться|запланировать|обсудить|написать|уточнить|согласовать|договориться|порешать|отложить|позвонить|напомнить|решить|поднять/i.test(sentence))
+    .filter((sentence) => /нужно|сделать|проверить|подготовить|отправить|создать|вернуться|запланировать|обсудить|написать|уточнить|согласовать|договориться|порешать|отложить|позвонить|напомнить|решить|поднять|встретиться|пригласить/i.test(sentence))
     .slice(0, 4);
 }
 
@@ -244,6 +250,43 @@ function detectRelativeDays(lower) {
     семь: 7,
   };
   return words[match[1]] || Number(match[1]) || null;
+}
+
+function detectRelativeWeekdayOffset(lower, date) {
+  const match = lower.match(/за\s+(один|одну|два|три|четыре|пять|шесть|семь|\d+)\s+дн(?:я|ей)?\s+до\s+(понедельника|вторника|среды|четверга|пятницы|субботы|воскресенья)/);
+  if (!match) return null;
+
+  const words = {
+    один: 1,
+    одну: 1,
+    два: 2,
+    три: 3,
+    четыре: 4,
+    пять: 5,
+    шесть: 6,
+    семь: 7,
+  };
+  const weekdays = {
+    понедельника: 1,
+    вторника: 2,
+    среды: 3,
+    четверга: 4,
+    пятницы: 5,
+    субботы: 6,
+    воскресенья: 0,
+  };
+  const offsetDays = words[match[1]] || Number(match[1]) || null;
+  const weekday = weekdays[match[2]];
+  if (!offsetDays || weekday === undefined) return null;
+
+  return exactReminder(addDays(nextWeekdayDate(date, weekday), -offsetDays), `Найден срок: за ${offsetDays} дн. до дня недели.`);
+}
+
+function nextWeekdayDate(date, weekday) {
+  const copy = new Date(date);
+  const diff = (weekday + 7 - copy.getDay()) % 7 || 7;
+  copy.setDate(copy.getDate() + diff);
+  return copy;
 }
 
 function exactReminder(date, reason) {

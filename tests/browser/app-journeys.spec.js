@@ -73,6 +73,54 @@ test.describe("AI Notes user journeys", () => {
     await expect(page.locator(".calendar-board")).toContainText("Точного срока нет");
   });
 
+  test("creates actions from note AI recommendation and shows notification center", async ({ page }) => {
+    await resetApp(page);
+    await addNote(page, "Напомнить Сергею завтра проверить договор и вынести встречу в календарь");
+
+    await page.locator(".insights summary").click();
+    await expect(page.locator(".insights")).toContainText("Создать follow-up");
+    await page.locator('[data-action="followup"]').click();
+    await page.locator(".insights summary").click();
+    await page.locator('[data-action="calendar"]').click();
+
+    await openView(page, "reminders");
+    await expect(page.locator(".notification-card")).toContainText("Локальный центр готов");
+    await expect(page.locator(".timeline")).toContainText("Follow-up");
+
+    await openView(page, "calendar");
+    await expect(page.locator(".calendar-board")).toContainText("Календарь");
+  });
+
+  test("captures multiple participants and decisions in a complex meeting note", async ({ page }) => {
+    await resetApp(page);
+    await addNote(page, "Обсудить и принять решения по отчету и бюджету в пятницу с Иваном и Светой");
+
+    await expect(page.locator(".meta-grid")).toContainText("Иван, Света");
+    await expect(page.locator(".meta-grid")).toContainText("12 июня");
+    await expect(page.locator(".note-card.active")).toContainText("Решения");
+
+    await page.locator(".insights summary").click();
+    await page.locator('[data-action="agenda"]').click();
+
+    await openView(page, "calendar");
+    await expect(page.locator(".calendar-board")).toContainText("Agenda");
+    await expect(page.locator(".calendar-board")).toContainText("Иваном и Светой");
+  });
+
+  test("integration cards expose current MVP readiness without claiming live sync", async ({ page }) => {
+    await resetApp(page);
+    await openView(page, "integrations");
+
+    await expect(page.locator(".integration-card")).toContainText("OpenRouter");
+    await expect(page.locator(".integration-card")).toContainText("Yandex Calendar");
+    await expect(page.locator(".integration-card")).toContainText("Telegram bot");
+    await expect(page.locator(".integration-card")).toContainText("реальный OpenRouter нужно подключать через VPS API");
+    await expect(page.locator(".integration-card")).toContainText("Telegram-бот пока не подключен");
+
+    await page.locator('[data-connect="telegram"]').click();
+    await expect(page.locator(".integration-card")).toContainText("Telegram bot");
+  });
+
   test("hides private notes from normal inbox views", async ({ page }) => {
     await resetApp(page);
     await addNote(page, "Личная приватная заметка с Олей на завтра");

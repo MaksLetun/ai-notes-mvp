@@ -786,18 +786,31 @@ function renderActionCard(action) {
 
 function renderReminders(reminders) {
   const followups = getActionsByType("followup");
-  return `<div class="timeline glass-panel">
-    ${followups.map((action) => renderActionItem(action)).join("")}
-    ${reminders.map((note) => `
-      <article class="timeline-item ${note.analysis.signal === "Сильный" ? "urgent" : ""}">
-        <time>${escapeHtml(reminderLabel(note))}</time>
-        <div>
-          <strong>${escapeHtml(note.analysis.people[0] || note.analysis.topic)}</strong>
-          ${reminderHint(note)}
-          <p>${escapeHtml(note.text)}</p>
-        </div>
-      </article>
-    `).join("") || (!followups.length ? "<p>Напоминаний пока нет.</p>" : "")}
+  const softReminders = reminders.filter((note) => note.analysis.reminderKind === "suggested").length;
+  return `<div class="reminders-layout">
+    <section class="timeline glass-panel">
+      ${followups.map((action) => renderActionItem(action)).join("")}
+      ${reminders.map((note) => `
+        <article class="timeline-item ${note.analysis.signal === "Сильный" ? "urgent" : ""}">
+          <time>${escapeHtml(reminderLabel(note))}</time>
+          <div>
+            <strong>${escapeHtml(note.analysis.people[0] || note.analysis.topic)}</strong>
+            ${reminderHint(note)}
+            <p>${escapeHtml(note.text)}</p>
+          </div>
+        </article>
+      `).join("") || (!followups.length ? "<p>Напоминаний пока нет.</p>" : "")}
+    </section>
+    <aside class="notification-card glass-panel">
+      <div class="panel-title">Уведомления</div>
+      <h2>Локальный центр готов</h2>
+      <p>Сейчас приложение показывает follow-up внутри интерфейса. После интеграций этот же список можно отправлять в Telegram, календарь или системные push-уведомления.</p>
+      <div class="status-checklist">
+        <span><b>${reminders.length}</b> сроков из заметок</span>
+        <span><b>${followups.length}</b> follow-up действий</span>
+        <span><b>${softReminders}</b> мягких сроков</span>
+      </div>
+    </aside>
   </div>`;
 }
 
@@ -811,7 +824,7 @@ function renderCalendarPlan() {
           <span class="eyebrow">Черновик календаря</span>
           <h2>Неделя и черновики</h2>
         </div>
-        <button class="ghost" data-view="integrations">Настроить календарь</button>
+        <button class="ghost" data-open-view="integrations">Настроить календарь</button>
       </div>
       <div class="calendar-board">
         ${Object.entries(buckets).map(([key, bucket]) => renderCalendarColumn(key, bucket)).join("")}
@@ -900,8 +913,9 @@ function renderIntegrations() {
           <span class="status ${integration.status}">${statusLabel(integration.status)}</span>
           <h2>${escapeHtml(integration.name)}</h2>
           <p>${escapeHtml(integration.description)}</p>
+          <small>${escapeHtml(integrationReadiness(integration.id))}</small>
         </div>
-        <button class="ghost" data-connect="${integration.id}">${integration.status === "connected" ? "Подключено" : "Запланировать"}</button>
+        <button class="ghost" data-connect="${integration.id}">${integrationActionLabel(integration.status)}</button>
       </article>
     `).join("")}
   </div>`;
@@ -1422,10 +1436,33 @@ function statusLabel(status) {
   }[status] || status;
 }
 
+function integrationActionLabel(status) {
+  if (status === "connected") return "Проверить";
+  if (status === "later") return "В очередь";
+  return "Проверить контур";
+}
+
+function integrationReadiness(id) {
+  return {
+    openrouter: "UI и QA-агенты готовы. В приложении пока локальный анализ; реальный OpenRouter нужно подключать через VPS API.",
+    "yandex-calendar": "Сейчас создаются календарные черновики внутри приложения. Внешняя запись в календарь будет следующим этапом.",
+    telegram: "Telegram-бот пока не подключен. Контур нужен для быстрого ввода, дайджестов и уведомлений.",
+    sync: "Синхронизация пока не подключена. Нужны аккаунт, backend и серверное хранилище.",
+  }[id] || "Контур интеграции отмечен, внешнее подключение еще не выполняется.";
+}
+
 function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeView = button.dataset.view;
+      saveState();
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-open-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeView = button.dataset.openView;
       saveState();
       render();
     });

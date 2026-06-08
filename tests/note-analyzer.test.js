@@ -33,3 +33,8 @@ test("extractPeople does not treat weekdays as people", () => {
   assert.deepEqual(extractPeople("обсудить встречу в среду"), []);
   assert.deepEqual(extractPeople("подготовить план к пятнице"), []);
 });
+
+test("extractPeople does not treat action verbs as people", () => {
+  assert.deepEqual(extractPeople("Встретиться с Дашей послезавтра"), ["Даша"]);
+  assert.deepEqual(extractPeople("Пригласить Катю, Олега и Веру на встречу"), ["Катя", "Олег", "Вера"]);
+});

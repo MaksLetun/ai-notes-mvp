@@ -95,10 +95,12 @@ function runBrowserJourneyAudit() {
   const result = spawnSync("node", ["scripts/browser-journey-audit.js"], {
     encoding: "utf8",
   });
+  const stdout = trimForReport(result.stdout);
+  const stderr = trimForReport(result.stderr);
   return {
     status: result.status === 0 ? "passed" : "failed",
-    stdout: trimForReport(result.stdout),
-    stderr: trimForReport(result.stderr),
+    stdout,
+    stderr: stderr || (result.status === 0 ? "" : "Browser journey runner returned non-zero exit without stderr output."),
   };
 }
 
