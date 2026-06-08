@@ -1,6 +1,8 @@
 # GitHub Actions
 
-The repository has three workflows.
+The repository uses GitHub Actions only for ordinary checks and web deployment.
+
+Autonomous AI QA/repair workflows are disabled.
 
 ## CI
 
@@ -25,92 +27,26 @@ This covers:
 - parser tests;
 - Playwright browser journeys.
 
-## AI QA
+## Web Deploy
 
 File:
 
 ```text
-.github/workflows/ai-qa.yml
+.github/workflows/pages.yml
 ```
 
-Runs:
+Runs on every push to `main` and manually through GitHub Actions.
 
-- manually through GitHub Actions;
-- every 6 hours by schedule.
+The deploy artifact includes only:
 
-It runs:
+- `index.html`;
+- `src/`;
+- `.nojekyll`.
 
-```bash
-npm run check
-node scripts/ai-qa-agent.js
-```
+The public web app is local-first and stores notes in the user's browser storage.
 
-Then uploads:
-
-- `qa-report.md`;
-- `qa-report.json`.
-- `browser-report.json`;
-- Playwright `test-results` when present.
-
-## Required Secret
-
-Add this repository secret in GitHub:
-
-```text
-OPENROUTER_API_KEY
-```
+## Secrets
 
 Do not commit real API keys to the repository.
 
-Optional repository variable:
-
-```text
-OPENROUTER_MODEL=openai/gpt-4.1-mini
-```
-
-## AI Repair
-
-File:
-
-```text
-.github/workflows/ai-repair.yml
-```
-
-Runs:
-
-- manually through GitHub Actions;
-- every 6 hours by schedule, offset from AI QA.
-
-It runs:
-
-```bash
-node scripts/ai-repair-agent.js
-```
-
-The repair agent:
-
-- runs the QA report first;
-- asks OpenRouter for a conservative unified diff;
-- applies the patch only if `git apply --check` passes;
-- runs `npm run check`;
-- pushes a `codex/ai-repair-*` branch;
-- opens a pull request.
-
-Optional repository variable:
-
-```text
-OPENROUTER_REPAIR_MODEL=openai/gpt-4.1-mini
-```
-
-## Autonomy Model
-
-GitHub Actions checks the app and can create repair PRs. Direct writes to `main` are intentionally avoided.
-
-## VPS Next Step
-
-For 24/7 repair automation outside the local Mac, use the VPS as a runner or cron host:
-
-- clone the repository;
-- add `.env` on VPS;
-- run `node scripts/ai-qa-agent.js` on a schedule;
-- optionally create PR branches from the VPS.
+Future OpenRouter integration should use a backend/proxy, not a browser-exposed API key.

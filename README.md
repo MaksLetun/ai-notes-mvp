@@ -44,20 +44,12 @@ http://localhost:4173
 ## Check
 
 ```bash
-node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node --check scripts/ai-qa-agent.js && node --test
+node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node scripts/ui-smoke-audit.js && node --test
 ```
 
 Manual QA checklist: `docs/qa-checklist.md`.
 
 Parser QA examples: `tests/fixtures/note-cases.js`.
-
-Autonomous AI QA agent:
-
-```bash
-node scripts/ai-qa-agent.js
-```
-
-Setup notes: `docs/ai-qa-agent.md`.
 
 ## Future Scope
 
