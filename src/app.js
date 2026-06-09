@@ -11,7 +11,7 @@ let introComplete = false;
 const introMessages = [
   {
     kicker: "Добро пожаловать",
-    title: "AI-заметки",
+    title: "ИИ-заметки",
     text: "Записывай мысли, задачи и договоренности свободным текстом.",
   },
   {
@@ -39,7 +39,7 @@ const defaultIntegrations = [
     id: "openrouter",
     name: "OpenRouter",
     status: "planned",
-    description: "AI-agent для анализа заметок, решений, дат, тредов и рекомендаций.",
+    description: "ИИ-агент для анализа заметок, решений, дат, тем и рекомендаций.",
   },
   {
     id: "yandex-calendar",
@@ -49,13 +49,13 @@ const defaultIntegrations = [
   },
   {
     id: "telegram",
-    name: "Telegram bot",
+    name: "Telegram",
     status: "later",
     description: "Быстрый ввод с телефона: текст, голос, напоминания и ежедневные дайджесты.",
   },
   {
     id: "sync",
-    name: "Account sync",
+    name: "Синхронизация",
     status: "later",
     description: "Личный кабинет, синхронизация между Mac, телефоном и будущим VPS.",
   },
@@ -66,7 +66,7 @@ const actionStatuses = ["open", "progress", "done"];
 const suggestionStatuses = ["pending", "accepted", "dismissed"];
 const pipelineSteps = [
   ["capture", "Заметка создана"],
-  ["analysis", "Локальный AI-анализ"],
+  ["analysis", "Локальный ИИ-анализ"],
   ["review", "Ожидает подтверждения"],
 ];
 const noteTemplates = [
@@ -291,6 +291,8 @@ function startIntro() {
     return;
   }
 
+  setTimeout(finishIntro, introMessages.length * 3000 + 500);
+
   const next = () => {
     introStep += 1;
     if (introStep >= introMessages.length) {
@@ -318,13 +320,11 @@ function render() {
 
   const filteredNotes = getFilteredNotes();
   const selected = filteredNotes.find((note) => note.id === state.selectedNoteId) || filteredNotes[0] || null;
-  const people = getPeople();
   const topics = getTopics();
   const reminders = getVisibleNotes().filter((note) => note.analysis.reminder);
   const signals = getVisibleNotes().filter((note) => note.analysis.signal !== "Обычный");
   const digest = getDigest();
   const today = getTodayData();
-  const pendingSuggestions = getPendingSuggestions();
 
   document.querySelector("#app").innerHTML = `
     <main class="shell">
@@ -332,29 +332,16 @@ function render() {
         <div class="brand">
           <div class="brand-mark">A</div>
           <div>
-            <strong>AI Memory</strong>
-            <span>MVP workspace</span>
+            <strong>ИИ-заметки</strong>
+            <span>Рабочее пространство</span>
           </div>
         </div>
         <nav class="nav">
           ${navButton("inbox", "Заметки", getVisibleNotes().length)}
           ${navButton("today", "Сегодня", today.total)}
-          ${navButton("reminders", "Follow-up", reminders.length + getActionsByType("followup").length)}
+          ${navButton("reminders", "Напоминания", reminders.length + getActionsByType("followup").length)}
           ${navButton("calendar", "Календарь", getActionsByType("calendar").length + getActionsByType("agenda").length)}
-          ${navButton("review", "AI Review", pendingSuggestions.length)}
-          <details class="nav-more" ${isSecondaryView(state.activeView) ? "open" : ""}>
-            <summary>Еще</summary>
-            ${navButton("actions", "Действия", state.actions.filter((action) => action.status !== "done").length)}
-            ${navButton("people", "Люди", people.length)}
-            ${navButton("threads", "Темы", topics.length)}
-            ${navButton("spaces", "Пространства", state.spaces.length)}
-            ${navButton("favorites", "Избранное", getVisibleNotes().filter((note) => note.favorite).length)}
-            ${navButton("digest", "Дайджест", digest.items.length)}
-            ${navButton("radar", "Сигналы", signals.length)}
-            ${navButton("activity", "Журнал", state.auditLog.length)}
-            ${navButton("integrations", "Интеграции", state.integrations.length)}
-            ${navButton("settings", "Настройки", state.settings.privacyMode ? 1 : 0)}
-          </details>
+          ${navButton("settings", "Настройки", state.settings.syncEnabled ? 1 : 0)}
         </nav>
       </aside>
 
@@ -378,7 +365,7 @@ function render() {
           ${state.activeView === "today" ? renderToday(today) : ""}
           ${state.activeView === "spaces" ? renderSpaces() : ""}
           ${state.activeView === "favorites" ? renderFavorites() : ""}
-          ${state.activeView === "people" ? renderPeople(people) : ""}
+          ${state.activeView === "people" ? renderPeople(getPeople()) : ""}
           ${state.activeView === "threads" ? renderThreads(topics) : ""}
           ${state.activeView === "review" ? renderReviewCenter() : ""}
           ${state.activeView === "actions" ? renderActions() : ""}
@@ -414,9 +401,9 @@ function viewTitle() {
     today: "Сегодня",
     spaces: "Пространства",
     favorites: "Избранное",
-    people: "Карточки людей",
+    people: "Люди",
     threads: "Темы и контекст",
-    review: "AI Review",
+    review: "ИИ-проверка",
     actions: "Действия",
     reminders: "Напоминания",
     calendar: "Календарный план",
@@ -468,10 +455,10 @@ function renderInbox(notes, selected) {
 function renderCommandPalette() {
   if (!state.commandOpen) return "";
   const commands = [
-    ["inbox", "Быстрые заметки", "Перейти в Inbox"],
+    ["inbox", "Быстрые заметки", "Перейти к заметкам"],
     ["today", "Сегодня", "Открыть фокус дня"],
-    ["review", "AI Review", "Проверить предложения агента"],
-    ["actions", "Действия", "Открыть action board"],
+    ["review", "ИИ-проверка", "Проверить предложения агента"],
+    ["actions", "Действия", "Открыть список действий"],
     ["calendar", "Календарь", "Открыть календарный план"],
     ["digest", "Дайджест", "Открыть сводку"],
     ["activity", "Журнал", "Посмотреть историю решений"],
@@ -479,10 +466,10 @@ function renderCommandPalette() {
   ];
 
   return `<div class="command-backdrop" data-close-command="true">
-    <section class="command-panel glass-panel" role="dialog" aria-label="Command palette">
+    <section class="command-panel glass-panel" role="dialog" aria-label="Панель команд">
       <div class="section-head">
         <div>
-          <span class="eyebrow">Command palette</span>
+          <span class="eyebrow">Панель команд</span>
           <h2>Быстрые действия</h2>
         </div>
         <button class="ghost small" data-close-command="true">Закрыть</button>
@@ -493,7 +480,7 @@ function renderCommandPalette() {
           <span>Перейти в Inbox и поставить курсор в поле ввода</span>
         </button>
         <button class="command-item" data-command-followup="true">
-          <b>Follow-up из выбранной заметки</b>
+          <b>Напоминание из выбранной заметки</b>
           <span>Создать действие по текущей заметке</span>
         </button>
         ${commands.map(([view, title, description]) => `
@@ -513,7 +500,7 @@ function filterButton(id, label) {
 
 function renderNoteItem(note) {
   return `<button class="note-item ${note.id === state.selectedNoteId ? "selected" : ""}" data-note="${note.id}">
-    <span class="topic">${note.favorite ? "★ " : ""}${note.sensitive ? "Private · " : ""}${note.analysis.topic}</span>
+    <span class="topic">${note.favorite ? "★ " : ""}${note.sensitive ? "Приватная · " : ""}${note.analysis.topic}</span>
     <strong>${escapeHtml(note.text.slice(0, 82))}${note.text.length > 82 ? "..." : ""}</strong>
     <small>${escapeHtml(note.space)} · ${new Date(note.createdAt).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small>
   </button>`;
@@ -537,9 +524,7 @@ function renderNoteDetail(note) {
     </div>
     <p class="note-text">${escapeHtml(note.text)}</p>
     <div class="meta-grid">
-      <div><span>Люди</span><strong>${note.analysis.people.join(", ") || "Не определены"}</strong></div>
       <div><span>Срок</span><strong>${escapeHtml(reminderLabel(note))}</strong>${reminderHint(note)}</div>
-      <div><span>Статус</span><strong>${note.analysis.urgency}</strong></div>
       <div><span>Пространство</span><strong>${escapeHtml(note.space)}</strong></div>
     </div>
     <div class="analysis-block">
@@ -556,7 +541,6 @@ function renderNoteEditor(note) {
   return `
     <div class="detail-head">
       <span class="pill">Редактирование</span>
-      <span class="risk ${note.analysis.signal.toLowerCase()}">${note.analysis.signal} сигнал</span>
     </div>
     <div class="edit-form">
       <label>
@@ -571,24 +555,8 @@ function renderNoteEditor(note) {
       </label>
       <div class="manual-grid">
         <label>
-          <span>Тема</span>
-          <select id="editNoteTopic" class="select-control">
-            ${getTopicNames().map((topic) => `<option value="${escapeHtml(topic)}" ${topic === note.analysis.topic ? "selected" : ""}>${escapeHtml(topic)}</option>`).join("")}
-          </select>
-        </label>
-        <label>
-          <span>Сигнал</span>
-          <select id="editNoteSignal" class="select-control">
-            ${["Обычный", "Средний", "Сильный"].map((signal) => `<option value="${escapeHtml(signal)}" ${signal === note.analysis.signal ? "selected" : ""}>${escapeHtml(signal)}</option>`).join("")}
-          </select>
-        </label>
-        <label>
           <span>Срок</span>
           <input id="editNoteReminder" class="text-control" value="${escapeHtml(note.analysis.reminder || "")}" placeholder="Например: завтра, 12 июня" />
-        </label>
-        <label>
-          <span>Люди</span>
-          <input id="editNotePeople" class="text-control" value="${escapeHtml(note.analysis.people.join(", "))}" placeholder="Имена через запятую" />
         </label>
       </div>
       <div class="edit-actions">
@@ -605,9 +573,9 @@ function renderInsights(note) {
       <summary>AI-рекомендация</summary>
       <p>${escapeHtml(note.analysis.action)}</p>
       <div class="stack">
-        <button class="ghost" data-action="followup" data-note-action="${note.id}">Создать follow-up</button>
+        <button class="ghost" data-action="followup" data-note-action="${note.id}">Создать напоминание</button>
         <button class="ghost" data-action="calendar" data-note-action="${note.id}">Вынести в календарь</button>
-        <button class="ghost" data-action="agenda" data-note-action="${note.id}">Подготовить agenda</button>
+        <button class="ghost" data-action="agenda" data-note-action="${note.id}">Подготовить повестку</button>
         <button class="ghost" data-action="prep" data-note-action="${note.id}">Режим встречи</button>
         <button class="ghost" data-action="postmeeting" data-note-action="${note.id}">Итоги встречи</button>
       </div>
@@ -890,7 +858,7 @@ function renderReminders(reminders) {
     <aside class="notification-card glass-panel">
       <div class="panel-title">Уведомления</div>
       <h2>Локальный центр готов</h2>
-      <p>Сейчас приложение показывает follow-up внутри интерфейса. После интеграций этот же список можно отправлять в Telegram, календарь или системные push-уведомления.</p>
+      <p>Сейчас приложение показывает напоминания внутри интерфейса. После интеграций этот же список можно отправлять в Telegram, календарь или системные уведомления.</p>
       <div class="status-checklist">
         <span><b>${reminders.length}</b> сроков из заметок</span>
         <span><b>${followups.length}</b> follow-up действий</span>
@@ -1010,12 +978,12 @@ function renderIntegrations() {
 function renderSettings() {
   return `<div class="settings-grid">
     <section class="settings-card glass-panel">
-      <span class="eyebrow">AI agent</span>
+      <span class="eyebrow">ИИ-агент</span>
       <h2>${escapeHtml(state.settings.aiProvider)}</h2>
-      <p>Анализ заметок, выделение решений, сроков, людей, тредов и рекомендаций. В production ключ OpenRouter будет храниться только на VPS API.</p>
+      <p>Анализ заметок, выделение решений, сроков, тем и рекомендаций. В рабочей версии ключ OpenRouter хранится только на серверном API.</p>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">Privacy</span>
+      <span class="eyebrow">Приватность</span>
       <h2>${state.settings.privacyMode ? "Приватный режим включен" : "Приватный режим выключен"}</h2>
       <p>Локальное хранение, скрытие приватных заметок, маскирование чувствительных данных и обязательное подтверждение перед внешними действиями.</p>
       <div class="settings-actions">
@@ -1026,7 +994,7 @@ function renderSettings() {
       </div>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">AI boundary</span>
+      <span class="eyebrow">Границы ИИ</span>
       <h2>${aiScopeLabel(state.settings.aiScope)}</h2>
       <p>До интеграций фиксируем правило: агент получает только нужный контекст, приватные заметки можно исключить или замаскировать.</p>
       <div class="segmented">
@@ -1034,19 +1002,19 @@ function renderSettings() {
       </div>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">Desktop app</span>
-      <h2>${state.settings.desktopMode ? "macOS-ready режим" : "Web-only режим"}</h2>
-      <p>Интерфейс держим совместимым с будущей Tauri/macOS оболочкой: без клиентских API-ключей, с локальным состоянием и отдельным backend API.</p>
+      <span class="eyebrow">Приложение для macOS</span>
+      <h2>${state.settings.desktopMode ? "Режим macOS включен" : "Только веб-режим"}</h2>
+      <p>Интерфейс держим совместимым с будущей оболочкой для macOS: без клиентских API-ключей, с локальным состоянием и отдельным серверным API.</p>
       <button class="ghost" data-toggle-setting="desktopMode">${state.settings.desktopMode ? "Отключить" : "Включить"}</button>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">Digest</span>
+      <span class="eyebrow">Дайджест</span>
       <h2>${state.settings.dailyDigest ? "Ежедневный дайджест включен" : "Дайджест выключен"}</h2>
-      <p>Сводка важных заметок, обещаний, сроков и сигналов. Позже сможет приходить в Telegram или push-уведомлением.</p>
+      <p>Сводка важных заметок, обещаний, сроков и сигналов. Позже сможет приходить в Telegram или системным уведомлением.</p>
       <button class="ghost" data-toggle-setting="dailyDigest">${state.settings.dailyDigest ? "Выключить" : "Включить"}</button>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">Local data</span>
+      <span class="eyebrow">Локальные данные</span>
       <h2>Резервная копия</h2>
       <p>Пока нет аккаунта и синхронизации, можно выгрузить локальное состояние приложения в JSON, восстановить его обратно или сбросить демо-данные.</p>
       <div class="settings-actions">
@@ -1059,7 +1027,7 @@ function renderSettings() {
       </div>
     </section>
     <section class="settings-card glass-panel">
-      <span class="eyebrow">Sync</span>
+      <span class="eyebrow">Синхронизация</span>
       <h2>${state.settings.syncEnabled ? "Синхронизация включена" : "Синхронизация выключена"}</h2>
       <p>Введи личный синхро-код на Mac, iPhone или в другом браузере. Заметки будут храниться на VPS и подтягиваться по этому коду.</p>
       <label class="setting-field">
@@ -1081,7 +1049,7 @@ function renderActionLog(noteId) {
   const actions = state.actions.filter((action) => action.noteId === noteId);
   if (!actions.length) return "";
   return `<div class="action-log">
-    <div class="panel-title">Created actions</div>
+    <div class="panel-title">Созданные действия</div>
     ${actions.map((action) => `<span>${escapeHtml(actionLabel(action.type))} · ${escapeHtml(actionStatusLabel(action.status))}</span>`).join("")}
   </div>`;
 }
@@ -1459,20 +1427,20 @@ function parsePeopleInput(value) {
 function buildActionTitle(type, note) {
   const target = note.analysis.people[0] || note.analysis.topic;
   if (type === "calendar") return `Календарь: ${target}`;
-  if (type === "agenda") return `Agenda: ${target}`;
+  if (type === "agenda") return `Повестка: ${target}`;
   if (type === "prep") return `Подготовка: ${target}`;
   if (type === "postmeeting") return `Итоги: ${target}`;
-  return `Follow-up: ${target}`;
+  return `Напоминание: ${target}`;
 }
 
 function actionLabel(type) {
   return {
-    followup: "Follow-up",
+    followup: "Напоминание",
     calendar: "Календарь",
-    agenda: "Agenda",
+    agenda: "Повестка",
     prep: "Подготовка",
     postmeeting: "Итоги",
-    "thread-summary": "Summary",
+    "thread-summary": "Сводка темы",
   }[type] || "Действие";
 }
 
@@ -1496,7 +1464,7 @@ function reminderHint(item) {
 
 function suggestionLabel(kind) {
   return {
-    followup: "Follow-up",
+    followup: "Напоминание",
     calendar: "Календарь",
     decision: "Решение",
     thread: "Тред",
@@ -1515,7 +1483,7 @@ function eventTypeLabel(type) {
   return {
     system: "Система",
     note: "Заметка",
-    ai: "AI Review",
+    ai: "ИИ-проверка",
     action: "Действие",
     settings: "Настройки",
     integration: "Интеграция",
@@ -1546,7 +1514,7 @@ function integrationActionLabel(status) {
 
 function integrationReadiness(id) {
   return {
-    openrouter: "UI и QA-агенты готовы. В приложении пока локальный анализ; реальный OpenRouter нужно подключать через VPS API.",
+    openrouter: "Интерфейс готов. В приложении пока локальный анализ; реальный OpenRouter нужно подключать через серверный API.",
     "yandex-calendar": "Сейчас создаются календарные черновики внутри приложения. Внешняя запись в календарь будет следующим этапом.",
     telegram: "Telegram-бот пока не подключен. Контур нужен для быстрого ввода, дайджестов и уведомлений.",
     sync: state.settings.syncEnabled
@@ -1598,7 +1566,7 @@ async function requestSync(path, payload) {
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok || data.ok === false) {
-    throw new Error(data.error || `Sync request failed with ${response.status}`);
+    throw new Error(data.error || `Ошибка синхронизации: ${response.status}`);
   }
   return data;
 }
@@ -1790,23 +1758,18 @@ function bindEvents() {
       const note = state.notes.find((item) => item.id === button.dataset.saveNote);
       const text = document.querySelector("#editNoteText")?.value.trim();
       const space = document.querySelector("#editNoteSpace")?.value;
-      const topic = document.querySelector("#editNoteTopic")?.value;
-      const signal = document.querySelector("#editNoteSignal")?.value;
       const reminder = document.querySelector("#editNoteReminder")?.value.trim();
-      const people = parsePeopleInput(document.querySelector("#editNotePeople")?.value || "");
       if (!note || !text || !space) return;
       Object.assign(note, enrichNote({
         ...note,
         text,
         space,
         analysisOverrides: {
-          topic,
-          signal,
+          ...note.analysisOverrides,
           reminder: reminder || null,
           reminderKind: reminder ? "exact" : null,
           reminderReason: reminder ? "Срок задан вручную." : "",
-          people,
-          urgency: reminder ? "Есть срок" : signal === "Сильный" ? "Следить" : "Без срока",
+          urgency: reminder ? "Есть срок" : "Без срока",
         },
         updatedAt: new Date().toISOString(),
       }));
@@ -1901,7 +1864,7 @@ function bindEvents() {
         noteId: thread.notes[0].id,
         type: "thread-summary",
         status: "open",
-        title: `Summary: ${thread.name}`,
+        title: `Сводка: ${thread.name}`,
         text: `${thread.notes.length} заметки в треде. Главный контекст: ${thread.notes[0].analysis.summary}`,
         createdAt: new Date().toISOString(),
       });
@@ -1932,7 +1895,7 @@ function bindEvents() {
   document.querySelectorAll("[data-ai-scope]").forEach((button) => {
     button.addEventListener("click", () => {
       state.settings.aiScope = button.dataset.aiScope;
-      addAuditEvent("settings", "AI boundary изменен", aiScopeLabel(state.settings.aiScope));
+      addAuditEvent("settings", "Границы ИИ изменены", aiScopeLabel(state.settings.aiScope));
       saveState();
       render();
     });
@@ -2017,7 +1980,7 @@ function restoreSearchFocus() {
 function exportState() {
   const data = JSON.stringify({
     exportedAt: new Date().toISOString(),
-    app: "AI Memory MVP",
+    app: "ИИ-заметки",
     version: STORAGE_KEY,
     state,
   }, null, 2);

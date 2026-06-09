@@ -21,9 +21,12 @@ const expectedViews = [
   "settings",
 ];
 
+const sidebarViews = ["inbox", "today", "reminders", "calendar", "settings"];
+
 const expectedSelectors = [
   "data-open-command",
   "data-command-focus-note",
+  "data-command-followup",
   "data-note-action",
   "data-accept-suggestion",
   "data-dismiss-suggestion",
@@ -35,9 +38,6 @@ const expectedSelectors = [
   "data-action-status",
   "data-open-note",
   "editNoteReminder",
-  "editNotePeople",
-  "editNoteSignal",
-  "editNoteTopic",
   "renderCalendarPlan",
   "renderReviewCenter",
 ];
@@ -45,6 +45,7 @@ const expectedSelectors = [
 const findings = [
   ...auditViews(),
   ...auditSelectors(),
+  ...auditWorkflowWiring(),
   ...auditResponsiveCss(),
   ...auditMinimalInterface(),
 ];
@@ -60,14 +61,16 @@ console.log(`UI smoke audit passed: ${expectedViews.length} views checked`);
 function auditViews() {
   const results = [];
   for (const view of expectedViews) {
-    if (!appSource.includes(`navButton("${view}"`)) {
-      results.push(`Missing sidebar nav button for view "${view}".`);
-    }
     if (!appSource.includes(`${view}: "`)) {
       results.push(`Missing title mapping for view "${view}".`);
     }
     if (!appSource.includes(`state.activeView === "${view}"`)) {
       results.push(`Missing render branch for view "${view}".`);
+    }
+  }
+  for (const view of sidebarViews) {
+    if (!appSource.includes(`navButton("${view}"`)) {
+      results.push(`Missing sidebar nav button for primary view "${view}".`);
     }
   }
   return results;
@@ -77,6 +80,19 @@ function auditSelectors() {
   return expectedSelectors
     .filter((selector) => !appSource.includes(selector))
     .map((selector) => `Missing expected interactive selector "${selector}".`);
+}
+
+function auditWorkflowWiring() {
+  const checks = [
+    ['function renderCommandPalette()', "Missing command palette renderer."],
+    ['state.commandOpen = true;', "Missing command palette open state transition."],
+    ['function exportState()', "Missing JSON export handler."],
+    ['function importStateFile(file)', "Missing JSON import handler."],
+  ];
+
+  return checks
+    .filter(([pattern]) => !appSource.includes(pattern))
+    .map(([, message]) => message);
 }
 
 function auditResponsiveCss() {
@@ -99,15 +115,13 @@ function auditMinimalInterface() {
   const results = [];
   const sidebarMatch = appSource.match(/<nav class="nav">([\s\S]*?)<\/nav>/);
   const sidebarMarkup = sidebarMatch?.[1] || "";
-  const moreIndex = sidebarMarkup.indexOf('<details class="nav-more"');
-  const beforeMore = moreIndex >= 0 ? sidebarMarkup.slice(0, moreIndex) : sidebarMarkup;
-  const primaryNavCount = [...beforeMore.matchAll(/navButton\("/g)].length;
+  const primaryNavCount = [...sidebarMarkup.matchAll(/navButton\("/g)].length;
 
   if (primaryNavCount > 5) {
-    results.push(`Primary sidebar has ${primaryNavCount} visible items; keep secondary areas under "Еще".`);
+    results.push(`Primary sidebar has ${primaryNavCount} visible items; keep it minimal.`);
   }
-  if (moreIndex < 0) {
-    results.push('Missing collapsed secondary navigation under "Еще".');
+  if (appSource.includes('<details class="nav-more"')) {
+    results.push('Sidebar secondary navigation returned; keep the left rail minimal.');
   }
   if (appSource.includes('class="mini-card"')) {
     results.push("Sidebar mini-card returned; keep AI/service details out of the main navigation.");
