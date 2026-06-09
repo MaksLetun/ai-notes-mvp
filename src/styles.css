@@ -136,7 +136,7 @@ small {
 
 .intro-progress {
   height: 4px;
-  margin-top: 34px;
+  margin-top: 30px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(23, 32, 38, 0.08);
@@ -151,18 +151,17 @@ small {
 }
 
 .intro-skip {
-  position: fixed;
-  right: 28px;
-  bottom: 26px;
+  display: block;
+  width: fit-content;
+  min-width: 132px;
   min-height: 42px;
+  margin: 26px auto 0;
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0 16px;
-  color: var(--ink);
-  background: rgba(255, 255, 255, 0.64);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  padding: 0 22px;
+  color: white;
+  background: var(--accent-dark);
+  box-shadow: 0 12px 28px rgba(15, 95, 99, 0.18);
 }
 
 @keyframes introFade {

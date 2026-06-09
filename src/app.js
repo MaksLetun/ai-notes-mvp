@@ -1,12 +1,14 @@
 import { addDays, analyzeNote, dictionaries, formatDate, inferSpace } from "./note-analyzer.js?v=20260608-sync2";
 
 const STORAGE_KEY = "ai-notes-mvp-v5";
+const INTRO_SEEN_KEY = "ai-notes-intro-seen-v1";
 const SYNC_API_BASE = "/api";
 let syncTimer = null;
 let isApplyingRemoteState = false;
 let shouldPersistAfterLoad = false;
 let introStep = 0;
 let introComplete = false;
+let introTimers = [];
 
 const introMessages = [
   {
@@ -16,8 +18,8 @@ const introMessages = [
   },
   {
     kicker: "Тихая автоматизация",
-    title: "Сроки, люди и действия",
-    text: "Сервис сам выделяет важное, предлагает follow-up и помогает не терять контекст.",
+    title: "Сроки и действия",
+    text: "Сервис сам выделяет важное, предлагает напоминания и помогает не терять контекст.",
   },
   {
     kicker: "Рабочая память",
@@ -45,7 +47,7 @@ const defaultIntegrations = [
     id: "yandex-calendar",
     name: "Yandex Calendar",
     status: "planned",
-    description: "Создание событий, agenda, контекста перед встречей и follow-up после нее.",
+    description: "Создание событий, повестки, контекста перед встречей и напоминаний после нее.",
   },
   {
     id: "telegram",
@@ -277,39 +279,64 @@ function renderIntro() {
         <div class="intro-progress" aria-hidden="true">
           <span style="width: ${progress}%"></span>
         </div>
+        <button class="intro-skip" data-skip-intro="true">Начать</button>
       </section>
-      <button class="intro-skip" data-skip-intro="true">Перейти к заметкам</button>
     </main>
   `;
   document.querySelector("[data-skip-intro]")?.addEventListener("click", finishIntro);
 }
 
 function startIntro() {
-  renderIntro();
-  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    setTimeout(finishIntro, 600);
+  if (hasSeenIntro()) {
+    finishIntro({ remember: false });
     return;
   }
 
-  setTimeout(finishIntro, introMessages.length * 3000 + 500);
+  renderIntro();
+  if (globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    introTimers.push(setTimeout(finishIntro, 400));
+    return;
+  }
+
+  introTimers.push(setTimeout(finishIntro, introMessages.length * 2000 + 500));
 
   const next = () => {
+    if (introComplete) return;
     introStep += 1;
     if (introStep >= introMessages.length) {
       finishIntro();
       return;
     }
     renderIntro();
-    setTimeout(next, 3000);
+    introTimers.push(setTimeout(next, 2000));
   };
 
-  setTimeout(next, 3000);
+  introTimers.push(setTimeout(next, 2000));
 }
 
-function finishIntro() {
+function finishIntro({ remember = true } = {}) {
   if (introComplete) return;
   introComplete = true;
+  introTimers.forEach((timer) => clearTimeout(timer));
+  introTimers = [];
+  if (remember) rememberIntro();
   render();
+}
+
+function hasSeenIntro() {
+  try {
+    return localStorage.getItem(INTRO_SEEN_KEY) === "true";
+  } catch (error) {
+    return false;
+  }
+}
+
+function rememberIntro() {
+  try {
+    localStorage.setItem(INTRO_SEEN_KEY, "true");
+  } catch (error) {
+    // Local storage can be blocked in strict browser modes; intro still works for the session.
+  }
 }
 
 function render() {
@@ -330,7 +357,7 @@ function render() {
     <main class="shell">
       <aside class="sidebar glass-panel">
         <div class="brand">
-          <div class="brand-mark">A</div>
+          <div class="brand-mark">И</div>
           <div>
             <strong>ИИ-заметки</strong>
             <span>Рабочее пространство</span>
@@ -355,7 +382,7 @@ function render() {
             <button class="ghost command-trigger" data-open-command="true">Команды</button>
             <label class="search">
               <span></span>
-              <input id="search" placeholder="Поиск по людям, темам, заметкам" value="${escapeHtml(state.query)}" />
+              <input id="search" placeholder="Поиск по темам, срокам и заметкам" value="${escapeHtml(state.query)}" />
             </label>
           </div>
         </header>
@@ -455,7 +482,7 @@ function renderInbox(notes, selected) {
 function renderCommandPalette() {
   if (!state.commandOpen) return "";
   const commands = [
-    ["inbox", "Быстрые заметки", "Перейти к заметкам"],
+    ["inbox", "Быстрые заметки", "Открыть заметки"],
     ["today", "Сегодня", "Открыть фокус дня"],
     ["review", "ИИ-проверка", "Проверить предложения агента"],
     ["actions", "Действия", "Открыть список действий"],
@@ -477,7 +504,7 @@ function renderCommandPalette() {
       <div class="command-list">
         <button class="command-item" data-command-focus-note="true">
           <b>Новая заметка</b>
-          <span>Перейти в Inbox и поставить курсор в поле ввода</span>
+          <span>Открыть заметки и поставить курсор в поле ввода</span>
         </button>
         <button class="command-item" data-command-followup="true">
           <b>Напоминание из выбранной заметки</b>
@@ -570,7 +597,7 @@ function renderNoteEditor(note) {
 function renderInsights(note) {
   return `
     <details class="insights">
-      <summary>AI-рекомендация</summary>
+      <summary>ИИ-рекомендация</summary>
       <p>${escapeHtml(note.analysis.action)}</p>
       <div class="stack">
         <button class="ghost" data-action="followup" data-note-action="${note.id}">Создать напоминание</button>
@@ -861,7 +888,7 @@ function renderReminders(reminders) {
       <p>Сейчас приложение показывает напоминания внутри интерфейса. После интеграций этот же список можно отправлять в Telegram, календарь или системные уведомления.</p>
       <div class="status-checklist">
         <span><b>${reminders.length}</b> сроков из заметок</span>
-        <span><b>${followups.length}</b> follow-up действий</span>
+        <span><b>${followups.length}</b> напоминаний</span>
         <span><b>${softReminders}</b> мягких сроков</span>
       </div>
     </aside>
@@ -885,8 +912,8 @@ function renderCalendarPlan() {
       </div>
     </section>
     <aside class="planner-side glass-panel">
-      <div class="panel-title">Calendar logic</div>
-      <p>Позже здесь будет синхронизация с ${escapeHtml(state.settings.calendarProvider)}: создание события, agenda, контекст перед встречей и follow-up после нее.</p>
+      <div class="panel-title">Логика календаря</div>
+      <p>Позже здесь будет синхронизация с ${escapeHtml(state.settings.calendarProvider)}: создание события, повестка, контекст перед встречей и напоминания после нее.</p>
     </aside>
   </div>`;
 }
@@ -1281,7 +1308,7 @@ function buildSuggestionsForNote(note) {
       id: createId(),
       kind: "decision",
       title: "Зафиксировать решение",
-      text: `В заметке есть решение. Лучше сохранить его в треде и добавить контрольный follow-up.`,
+      text: `В заметке есть решение. Лучше сохранить его в теме и добавить контрольное напоминание.`,
       payload: { actionType: "thread-summary" },
     });
   }
@@ -1334,7 +1361,7 @@ function acceptSuggestion(id) {
   }
 
   markJobDone(suggestion.noteId);
-  addAuditEvent("ai", "AI-предложение принято", suggestion.title);
+  addAuditEvent("ai", "ИИ-предложение принято", suggestion.title);
   saveState();
   render();
 }
@@ -1344,7 +1371,7 @@ function dismissSuggestion(id) {
   if (!suggestion || suggestion.status !== "pending") return;
   suggestion.status = "dismissed";
   suggestion.resolvedAt = new Date().toISOString();
-  addAuditEvent("ai", "AI-предложение отклонено", suggestion.title);
+  addAuditEvent("ai", "ИИ-предложение отклонено", suggestion.title);
   saveState();
   render();
 }
@@ -1458,7 +1485,7 @@ function reminderLabel(item) {
 
 function reminderHint(item) {
   if (item.analysis?.reminderKind !== "suggested") return "";
-  const reason = item.analysis.reminderReason || "Точного срока нет, поставлен мягкий follow-up.";
+  const reason = item.analysis.reminderReason || "Точного срока нет, поставлено мягкое напоминание.";
   return `<small class="meta-hint">${escapeHtml(reason)}</small>`;
 }
 
@@ -1501,7 +1528,7 @@ function aiScopeLabel(scope) {
 function statusLabel(status) {
   return {
     connected: "Подключено",
-    planned: "MVP-контур",
+    planned: "Контур готов",
     later: "Позже",
   }[status] || status;
 }
