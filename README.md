@@ -44,7 +44,7 @@ http://localhost:4173
 ## Check
 
 ```bash
-node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node scripts/ui-smoke-audit.js && node --test
+node --check src/app.js && node --check src/note-analyzer.js && node --check src/openrouter-agent.js && node --check scripts/ui-smoke-audit.js && node scripts/ui-smoke-audit.js && node --test
 ```
 
 Manual QA checklist: `docs/qa-checklist.md`.

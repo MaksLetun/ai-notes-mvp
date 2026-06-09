@@ -61,3 +61,9 @@ Use this checklist after every product/UI iteration.
 - Run `node --test` after parser changes.
 - The corpus should cover people, deadlines, topics, signals, decisions, and task extraction.
 - Keep examples natural and messy, matching how notes are actually written.
+
+## Automated UI QA
+
+- Run `node scripts/ui-smoke-audit.js` after navigation, import/export, settings, or layout changes.
+- Keep command palette, JSON portability, and privacy hide flows covered by either browser journeys or static audit checks.
+- When browser automation is unavailable, strengthen repo-owned audit checks instead of skipping critical UI wiring.
